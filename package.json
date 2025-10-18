@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "ingest:unthinking": "tsx scripts/ingest-unthinking.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.30",
@@ -29,6 +30,7 @@
     "lucide-react": "^0.544.0",
     "nanoid": "^5.1.5",
     "next": "15.5.3",
+    "openai": "^6.5.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-syntax-highlighter": "^15.6.6",
@@ -45,6 +47,7 @@
     "@types/react-dom": "^19",
     "@types/react-syntax-highlighter": "^15.5.13",
     "tailwindcss": "^4",
+    "tsx": "^4.20.6",
     "tw-animate-css": "^1.3.8",
     "typescript": "^5"
   }
