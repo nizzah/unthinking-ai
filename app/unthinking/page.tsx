@@ -1,4 +1,5 @@
 "use client";
+// Unthinking App MVP - Transform stuck moments into micro-actions
 import { useState } from "react";
 import { StuckForm } from "@/components/unthinking/StuckForm";
 import { CompassCard } from "@/components/unthinking/CompassCard";
