@@ -8,20 +8,33 @@ export class VectorizeService {
   private pipelineId: string;
 
   constructor() {
-    const config = new Configuration({
-      accessToken: process.env.VECTORIZE_ACCESS_TOKEN,
-      basePath: "https://api.vectorize.io/v1",
-    });
+    // Only initialize if environment variables are available
+    if (process.env.VECTORIZE_ACCESS_TOKEN && process.env.VECTORIZE_ORG_ID && process.env.VECTORIZE_PIPELINE_ID) {
+      const config = new Configuration({
+        accessToken: process.env.VECTORIZE_ACCESS_TOKEN,
+        basePath: "https://api.vectorize.io/v1",
+      });
 
-    this.pipelinesApi = new PipelinesApi(config);
-    this.organizationId = process.env.VECTORIZE_ORG_ID!;
-    this.pipelineId = process.env.VECTORIZE_PIPELINE_ID!;
+      this.pipelinesApi = new PipelinesApi(config);
+      this.organizationId = process.env.VECTORIZE_ORG_ID;
+      this.pipelineId = process.env.VECTORIZE_PIPELINE_ID;
+    } else {
+      this.pipelinesApi = null;
+      this.organizationId = "";
+      this.pipelineId = "";
+    }
   }
 
   async retrieveDocuments(
     question: string,
     numResults: number = 2
   ): Promise<VectorizeDocument[]> {
+    // Return empty array if not initialized
+    if (!this.pipelinesApi) {
+      console.log("Vectorize not configured - returning empty results");
+      return [];
+    }
+
     try {
       const response = await this.pipelinesApi.retrieveDocuments({
         organizationId: this.organizationId,

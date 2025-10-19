@@ -50,6 +50,7 @@ export default function UnthinkingPage() {
     <main className="min-h-screen bg-[#052135] text-white flex items-center justify-center p-6">
       <div className="w-full max-w-xl space-y-6">
         <h1 className="text-2xl font-semibold">Unthinking Compass</h1>
+        {/* Force Vercel redeploy */}
 
         {!data && <StuckForm onSubmit={getCompass} />}
 
