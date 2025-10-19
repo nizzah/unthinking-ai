@@ -38,6 +38,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if OpenAI API key is configured
+    console.log("Environment check:", {
+      hasOpenAI: !!process.env.OPENAI_API_KEY,
+      hasVectorizeToken: !!process.env.VECTORIZE_ACCESS_TOKEN,
+      hasVectorizeOrg: !!process.env.VECTORIZE_ORG_ID,
+      hasVectorizePipeline: !!process.env.VECTORIZE_PIPELINE_ID
+    });
+    
     if (!process.env.OPENAI_API_KEY) {
       console.error("OpenAI API key not configured");
       return NextResponse.json({ error: "AI service not configured." }, { status: 500 });
@@ -73,7 +80,9 @@ export async function POST(req: NextRequest) {
     // Generate AI response using retrieved personal context
     let data: Compass;
     try {
-      const prompt = hasPersonalData 
+      console.log("Attempting OpenAI generation with personal data:", hasPersonalData);
+      
+      const prompt = hasPersonalData
         ? `User's stuck feeling: "${userText}"
 
 Personal insights from their knowledge base (goal planning docs, journal entries, strengths profile, etc.):
@@ -84,6 +93,7 @@ Surface an unexpected insight or connection from their personal data that they m
 
 Generate a compass response that helps them move forward with a small, actionable step.`;
 
+      console.log("Calling OpenAI generateText...");
       const result = await generateText({
         model: openai("gpt-5"),
         system: UNTHINKING_SYSTEM_PROMPT,
