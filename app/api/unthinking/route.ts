@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
+import { VectorizeService } from "@/lib/retrieval/vectorize";
 
 type Compass = {
   spark: string;
@@ -9,20 +10,22 @@ type Compass = {
   feltLighterPrompt: string;
 };
 
-const UNTHINKING_SYSTEM_PROMPT = `You are the Unthinking Compass, an AI that helps people transform stuck moments into micro-actions.
+const UNTHINKING_SYSTEM_PROMPT = `You are the Unthinking Compass, an AI that helps people transform stuck moments into micro-actions by surfacing unexpected insights from their personal data.
 
-Your job is to analyze a user's stuck feeling and generate:
-1. A SPARK (≤25 words) - a personally relevant insight that reframes their situation
+Your job is to analyze a user's stuck feeling and relevant insights from their personal knowledge base (goal planning docs, journal entries, strengths profile, etc.) to generate:
+1. A SPARK (≤25 words) - a personally relevant insight that reframes their situation, ideally connecting dots they can't see clearly
 2. A STEP (≤10 min, verb-first) - one tiny, verifiable micro-action they can take
-3. A RATIONALE (≤20 words) - why this step connects to the spark
+3. A RATIONALE (≤20 words) - why this step connects to the spark and their personal patterns
 4. A FELT_LIGHTER_PROMPT (≤20 words) - a check-in question for after they complete the step
 
 Guidelines:
+- Use the retrieved personal data to surface unexpected connections and insights
+- Look for patterns, themes, or hidden strengths in their data
 - Keep steps small and achievable (5-10 minutes max)
 - Focus on reducing friction and creating momentum
 - Be encouraging but not therapeutic
-- Draw from principles of momentum and small wins
-- Make responses feel personal and relevant
+- Make responses feel deeply personal and relevant to their unique situation
+- If no relevant personal data, draw from general principles of momentum and small wins
 
 Return ONLY a JSON object with these exact keys: spark, step, rationale, feltLighterPrompt`;
 
@@ -40,15 +43,51 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI service not configured." }, { status: 500 });
     }
 
-    // Generate AI response
+    // Retrieve relevant documents from Vectorize (personal data)
+    let retrievedContext = "No relevant personal insights found in your knowledge base.";
+    let hasPersonalData = false;
+    
+    try {
+      // Check if Vectorize environment variables are configured
+      if (process.env.VECTORIZE_ACCESS_TOKEN && process.env.VECTORIZE_ORG_ID && process.env.VECTORIZE_PIPELINE_ID) {
+        console.log("Retrieving personal data from Vectorize...");
+        const vectorizeService = new VectorizeService();
+        const documents = await vectorizeService.retrieveDocuments(userText, 5); // Get more results for better insights
+        
+        if (documents && documents.length > 0) {
+          retrievedContext = vectorizeService.formatDocumentsForContext(documents);
+          hasPersonalData = true;
+          console.log(`Found ${documents.length} relevant personal documents`);
+        } else {
+          console.log("No relevant personal documents found");
+        }
+      } else {
+        console.log("Vectorize not configured - using general principles");
+        retrievedContext = "Using general principles of momentum and small wins to help you move forward.";
+      }
+    } catch (error) {
+      console.error("Vectorize retrieval error:", error);
+      retrievedContext = "Using general principles of momentum and small wins to help you move forward.";
+    }
+
+    // Generate AI response using retrieved personal context
     let data: Compass;
     try {
+      const prompt = hasPersonalData 
+        ? `User's stuck feeling: "${userText}"
+
+Personal insights from their knowledge base (goal planning docs, journal entries, strengths profile, etc.):
+${retrievedContext}
+
+Surface an unexpected insight or connection from their personal data that they might not see clearly. Generate a compass response that helps them connect the dots and move forward with a small, actionable step.`
+        : `User's stuck feeling: "${userText}"
+
+Generate a compass response that helps them move forward with a small, actionable step.`;
+
       const result = await generateText({
         model: openai("gpt-5"),
         system: UNTHINKING_SYSTEM_PROMPT,
-        prompt: `User's stuck feeling: "${userText}"
-
-Generate a compass response that helps them move forward with a small, actionable step.`,
+        prompt,
         providerOptions: {
           openai: {
             reasoning_effort: "low",
