@@ -17,6 +17,10 @@
 /.next/
 /out/
 
+# cache files that cause build manifest errors
+.next/static/development/_buildManifest.js.tmp.*
+node_modules/.cache/
+
 # production
 /build
 

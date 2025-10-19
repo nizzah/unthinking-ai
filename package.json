@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:clean": "rm -rf .next && rm -rf node_modules/.cache && npm run dev",
     "build": "next build",
     "start": "next start",
     "ingest:unthinking": "tsx scripts/ingest-unthinking.ts",
-    "test:vectorize": "tsx scripts/test-vectorize.ts"
+    "test:vectorize": "tsx scripts/test-vectorize.ts",
+    "clean": "rm -rf .next && rm -rf node_modules/.cache"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.30",
