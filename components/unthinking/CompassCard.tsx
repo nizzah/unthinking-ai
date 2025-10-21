@@ -6,6 +6,7 @@ type Compass = {
   step: string;
   rationale: string;
   feltLighterPrompt: string;
+  sources?: Array<{ id: string; title: string; url?: string }>;
 };
 
 export function CompassCard({ data }: { data: Compass }) {
@@ -29,6 +30,16 @@ export function CompassCard({ data }: { data: Compass }) {
           <div>{data.feltLighterPrompt}</div>
         </div>
       </CardContent>
+      {data.sources?.length ? (
+        <div className="pt-2 text-sm text-gray-600">
+          <div className="uppercase text-xs tracking-wide">Based on</div>
+          <ul className="list-disc pl-5">
+            {data.sources.map((s) => (
+              <li key={s.id}>{s.title}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </Card>
   );
 }

@@ -10,6 +10,7 @@ type Compass = {
   step: string;
   rationale: string;
   feltLighterPrompt: string;
+  sources?: Array<{ id: string; title: string; url?: string }>;
 };
 
 export default function UnthinkingPage() {

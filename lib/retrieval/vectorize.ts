@@ -27,7 +27,8 @@ export class VectorizeService {
 
   async retrieveDocuments(
     question: string,
-    numResults: number = 2
+    numResults: number = 2,
+    searchOptions?: any
   ): Promise<VectorizeDocument[]> {
     // Return empty array if not initialized
     if (!this.pipelinesApi) {
@@ -36,13 +37,20 @@ export class VectorizeService {
     }
 
     try {
+      const requestBody: any = {
+        question,
+        numResults,
+      };
+
+      // Add search options if provided
+      if (searchOptions) {
+        requestBody.search = searchOptions;
+      }
+
       const response = await this.pipelinesApi.retrieveDocuments({
         organizationId: this.organizationId,
         pipelineId: this.pipelineId,
-        retrieveDocumentsRequest: {
-          question,
-          numResults,
-        },
+        retrieveDocumentsRequest: requestBody,
       });
 
       return response.documents || [];

@@ -9,6 +9,12 @@ export {
   resetFirecrawlMCPClient,
 } from "./client/firecrawl-client";
 
+export {
+  NotionMCPClient,
+  getNotionMCPClient,
+  resetNotionMCPClient,
+} from "./client/notion-client";
+
 export type {
   FirecrawlScrapeParams,
   FirecrawlBatchScrapeParams,
