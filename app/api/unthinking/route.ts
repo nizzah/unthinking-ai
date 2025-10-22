@@ -59,7 +59,6 @@ export async function POST(req: NextRequest) {
       system: SYSTEM,
       messages: [{ role: "user", content: userMsg }],
       temperature: 0,
-      max_tokens: 350,
       providerOptions: {
         openai: {
           response_format: { type: "json_object" },
