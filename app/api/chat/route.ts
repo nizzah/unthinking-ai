@@ -1,6 +1,6 @@
 import { SYSTEM_INSTRUCTIONS } from "@/components/agent/prompt";
 import { openai } from "@ai-sdk/openai";
-import { streamText, convertToModelMessages } from "ai";
+import { streamText } from "ai";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -11,24 +11,10 @@ export async function POST(request: NextRequest) {
       return new Response("Messages array is required", { status: 400 });
     }
 
-    const modelMessages = convertToModelMessages(messages);
-
     const result = streamText({
-      model: openai("gpt-5"),
+      model: openai(process.env.MODEL_NAME || "gpt-4o-mini"),
       system: SYSTEM_INSTRUCTIONS,
-      messages: modelMessages,
-      providerOptions: {
-        openai: {
-          reasoning_effort: "low",
-          textVerbosity: "low",
-          reasoningSummary: "detailed",
-        },
-      },
-      tools: {
-        web_search: openai.tools.webSearch({
-          searchContextSize: "low",
-        }),
-      },
+      messages: messages,
     });
 
     return result.toUIMessageStreamResponse();

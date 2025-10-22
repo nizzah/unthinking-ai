@@ -1,4 +1,5 @@
 import { getNotionMCPClient } from "./mcp/client/notion-client";
+import { getFirecrawlMCPClient } from "./mcp/client/firecrawl-client";
 
 export async function callNotionMcp(tool: string, args: any) {
   const client = getNotionMCPClient();
@@ -11,3 +12,5 @@ export async function callNotionMcp(tool: string, args: any) {
   
   return await tools[tool].execute(args);
 }
+
+export { getFirecrawlMCPClient };

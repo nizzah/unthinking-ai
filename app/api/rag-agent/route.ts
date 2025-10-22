@@ -1,7 +1,7 @@
 import { RAG_SYSTEM_INSTRUCTIONS } from "@/components/agent/rag-prompt";
 import { retrieveKnowledgeBaseSimple } from "@/components/agent/tools";
 import { openai } from "@ai-sdk/openai";
-import { streamText, convertToModelMessages, stepCountIs } from "ai";
+import { streamText, stepCountIs } from "ai";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -12,19 +12,10 @@ export async function POST(request: NextRequest) {
       return new Response("Messages array is required", { status: 400 });
     }
 
-    const modelMessages = convertToModelMessages(messages);
-
     const result = streamText({
-      model: openai("gpt-5"),
+      model: openai(process.env.MODEL_NAME || "gpt-4o-mini"),
       system: RAG_SYSTEM_INSTRUCTIONS,
-      providerOptions: {
-        openai: {
-          reasoning_effort: "low",
-          textVerbosity: "low",
-          reasoningSummary: "detailed",
-        },
-      },
-      messages: modelMessages,
+      messages: messages,
       stopWhen: stepCountIs(10), // this is the part that makes this an agent!!!!
       tools: {
         retrieveKnowledgeBase: retrieveKnowledgeBaseSimple,

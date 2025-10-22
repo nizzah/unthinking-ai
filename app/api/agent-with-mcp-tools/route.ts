@@ -1,7 +1,7 @@
 import { WEB_SCRAPER_SYSTEM_INSTRUCTIONS } from "@/components/agent/web-scraper-prompt";
 import { getFirecrawlMCPClient } from "@/lib/mcp";
 import { openai } from "@ai-sdk/openai";
-import { streamText, convertToModelMessages, stepCountIs } from "ai";
+import { streamText, stepCountIs } from "ai";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -11,8 +11,6 @@ export async function POST(request: NextRequest) {
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response("Messages array is required", { status: 400 });
     }
-
-    const modelMessages = convertToModelMessages(messages);
 
     // Initialize Firecrawl MCP client
     console.log("🚀 Initializing Firecrawl MCP client...");
@@ -44,18 +42,11 @@ export async function POST(request: NextRequest) {
     );
 
     const result = streamText({
-      model: openai("gpt-5"),
+      model: openai(process.env.MODEL_NAME || "gpt-4o-mini"),
       system: WEB_SCRAPER_SYSTEM_INSTRUCTIONS,
-      messages: modelMessages,
+      messages: messages,
       tools: wrappedTools,
       stopWhen: stepCountIs(10),
-      providerOptions: {
-        openai: {
-          reasoning_effort: "low",
-          textVerbosity: "low",
-          reasoningSummary: "detailed",
-        },
-      },
     });
 
     return result.toUIMessageStreamResponse();

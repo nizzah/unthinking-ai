@@ -1,36 +1,37 @@
-import { NextRequest, NextResponse } from "next/server";
-import { OpenAI } from "openai";
+import { NextRequest } from "next/server";
+import { openai } from "@ai-sdk/openai";
+import { streamText } from "ai";
+import { SYSTEM } from "@/lib/prompt";
 import { pickCats } from "@/lib/routing";
 import { fetchVectorizeSmart } from "@/lib/retrieval";
 import { fetchNotionSmart } from "@/lib/notion-mcp-retrieval";
 import { rerank } from "@/lib/rerank";
-import { SYSTEM } from "@/lib/prompt";
 import { callNotionMcp } from "@/lib/mcp";
-
-type Compass = {
-  spark: string;
-  step: string;
-  rationale: string;
-  feltLighterPrompt: string;
-};
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const q = body.q || body.userText;
-    if (!q || typeof q !== "string" || !q.trim()) {
-      return NextResponse.json({ error: "Please describe what feels stuck." }, { status: 400 });
+    const userText = body.q || body.userText;
+    
+    if (!userText || typeof userText !== "string" || !userText.trim()) {
+      return new Response(
+        JSON.stringify({ error: "Please describe what feels stuck." }), 
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    const { cats } = pickCats(q);
+    console.log("🚀 Spark agent processing query:", userText);
+
+    // Use the same retrieval logic as the original
+    const { cats } = pickCats(userText);
 
     const [v, n] = await Promise.allSettled([
       Promise.race([
-        fetchVectorizeSmart(q, 6),
+        fetchVectorizeSmart(userText, 6),
         new Promise((_, reject) => setTimeout(() => reject(new Error("RAG timeout")), 6000))
       ]).catch(() => []),
       Promise.race([
-        fetchNotionSmart(callNotionMcp, q, cats, 5),
+        fetchNotionSmart(callNotionMcp, userText, cats, 5),
         new Promise((_, reject) => setTimeout(() => reject(new Error("MCP timeout")), 6000))
       ]).catch(() => [])
     ]);
@@ -40,52 +41,66 @@ export async function POST(req: NextRequest) {
     const merged = rerank([...vres, ...nres], cats);
 
     if (!merged.length) {
-      return NextResponse.json({ error: "NO_CONTEXT", message: "No usable context." }, { status: 200 });
+      return new Response(
+        JSON.stringify({ error: "NO_CONTEXT", message: "No usable context." }), 
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    const ctx = merged.map((c:any,i:number)=>`[[DOC ${i+1}]]\nTitle: ${c.title}\nURL: ${c.url||""}\n---\n${c.text}`).join("\n\n");
-    const userMsg = `USER QUERY:\n${q}\n\nCONTEXT:\n${ctx}`;
+    const ctx = merged.map((c: any, i: number) => 
+      `[[DOC ${i + 1}]]\nTitle: ${c.title}\nURL: ${c.url || ""}\n---\n${c.text}`
+    ).join("\n\n");
+    
+    const userMsg = `USER QUERY:\n${userText}\n\nCONTEXT:\n${ctx}`;
 
-    console.log("🔍 Debug Info:", {
-      query: q,
-      categories: cats,
-      vectorizeCount: vres.length,
-      notionCount: nres.length,
-      mergedCount: merged.length,
-      contextLength: ctx.length,
-      hasOpenAIKey: !!process.env.OPENAI_API_KEY
+    // Use AI SDK for the final generation
+    const result = await streamText({
+      model: openai(process.env.MODEL_NAME || "gpt-4o-mini"),
+      system: SYSTEM,
+      messages: [{ role: "user", content: userMsg }],
+      temperature: 0,
+      maxTokens: 350,
+      providerOptions: {
+        openai: {
+          response_format: { type: "json_object" },
+        },
+      },
     });
 
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    let resp;
+    const text = await result.text;
+    
     try {
-      resp = await Promise.race([
-        client.chat.completions.create({
-          model: process.env.MODEL_NAME || "gpt-4o-mini",
-          temperature: 0,
-          max_tokens: 350,
-          response_format: { type: "json_object" },
-          messages: [{ role:"system", content: SYSTEM }, { role:"user", content: userMsg }],
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("OpenAI timeout")), 10000))
-      ]);
-      console.log("✅ OpenAI response received");
-    } catch (openaiError) {
-      console.error("❌ OpenAI Error:", openaiError);
-      throw openaiError;
-    }
+      const parsedResponse = JSON.parse(text);
+      
+      if (parsedResponse.error === "NO_CONTEXT") {
+        return new Response(
+          JSON.stringify({ error: "NO_CONTEXT", message: "Model refused due to empty context." }), 
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-    let data:any = null;
-    try { data = JSON.parse(resp.choices[0].message.content || "{}"); } catch {}
-    if (!data || data.error === "NO_CONTEXT") {
-      return NextResponse.json({ error: "NO_CONTEXT", message: "Model refused due to empty context." }, { status: 200 });
-    }
+      // Add sources
+      parsedResponse.sources = merged.slice(0, 3).map((s: any) => ({
+        title: s.title,
+        url: s.url || null
+      }));
 
-    // add sources list
-    data.sources = merged.slice(0,3).map((s:any)=>({ title: s.title, url: s.url || null }));
-    return NextResponse.json(data, { status: 200 });
+      return new Response(
+        JSON.stringify(parsedResponse), 
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    } catch (parseError) {
+      console.error("❌ Failed to parse AI response:", parseError);
+      return new Response(
+        JSON.stringify({ error: "Failed to generate compass response." }), 
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
   } catch (error) {
-    console.error("Unthinking API error:", error);
-    return NextResponse.json({ error: "Failed to generate compass response." }, { status: 500 });
+    console.error("💥 Spark agent API error:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to generate compass response." }), 
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }
