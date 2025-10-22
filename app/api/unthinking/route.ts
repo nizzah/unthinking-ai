@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
       ]).catch(() => [])
     ]);
 
-    const vres = v.status === "fulfilled" ? v.value : [];
-    const nres = n.status === "fulfilled" ? n.value : [];
+    const vres = v.status === "fulfilled" ? (v.value as any[]) : [];
+    const nres = n.status === "fulfilled" ? (n.value as any[]) : [];
     const merged = rerank([...vres, ...nres], cats);
 
     if (!merged.length) {
