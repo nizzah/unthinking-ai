@@ -64,15 +64,18 @@ export function MindDumpScreen({ onComplete }: MindDumpScreenProps) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Start typing..."
+            aria-label="Mind dump - write freely about what's on your mind"
             className="w-full min-h-[300px] bg-ocean-800/50 border border-ocean-600 rounded-2xl p-6 text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-coral-600/50 resize-none text-lg leading-relaxed"
           />
 
           {/* Emotion tags */}
-          <div className="flex gap-2 justify-center flex-wrap">
+          <div className="flex gap-2 justify-center flex-wrap" role="group" aria-label="Select emotions you're feeling">
             {emotions.map((emotion) => (
               <button
                 key={emotion}
                 onClick={() => toggleEmotion(emotion)}
+                aria-pressed={selectedEmotions.includes(emotion)}
+                aria-label={`${emotion} emotion`}
                 className={`px-4 py-2 rounded-full text-sm transition-all ${
                   selectedEmotions.includes(emotion)
                     ? "bg-coral-600 text-white"

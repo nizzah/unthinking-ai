@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useSearchParams } from "next/navigation"
+import { AnimatePresence, motion } from "framer-motion"
 import { MindDumpScreen } from "@/components/flow/mind-dump-screen"
 import { BreathingTransitionScreen } from "@/components/flow/breathing-transition-screen"
 import { SparkScreen } from "@/components/flow/spark-screen"
@@ -32,6 +33,18 @@ interface SparkData {
 interface StepData {
   primary: string
   smaller: string
+}
+
+// Animation variants for phase transitions
+const phaseVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 }
+}
+
+const transition = {
+  duration: 0.5,
+  ease: "easeInOut"
 }
 
 export default function FlowPage() {
@@ -114,7 +127,7 @@ export default function FlowPage() {
 
   const submitSession = async (feeling: number, reflection: string) => {
     try {
-      await fetch("/api/relief", {
+      const response = await fetch("/api/relief", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -127,8 +140,50 @@ export default function FlowPage() {
           timestamp: new Date().toISOString(),
         }),
       })
+
+      if (response.ok) {
+        const result = await response.json()
+        
+        // Update streak data in localStorage
+        updateStreakData({
+          feeling,
+          selectedStep: selectedStep || "unknown",
+          timestamp: new Date().toISOString(),
+        })
+      }
     } catch (error) {
       console.error("[v0] Error submitting session:", error)
+    }
+  }
+
+  const updateStreakData = (newSession: { feeling: number; selectedStep: string; timestamp: string }) => {
+    try {
+      // Get existing streak data
+      const existingData = localStorage.getItem('unthinking-streak')
+      let streakData = existingData ? JSON.parse(existingData) : { sessions: [] }
+      
+      // Add new session
+      streakData.sessions.unshift({
+        date: newSession.timestamp,
+        feeling: newSession.feeling,
+        selectedStep: newSession.selectedStep,
+      })
+      
+      // Keep only last 30 sessions to avoid localStorage bloat
+      streakData.sessions = streakData.sessions.slice(0, 30)
+      
+      // Update last session
+      streakData.lastSession = newSession.timestamp
+      
+      // Save to localStorage
+      localStorage.setItem('unthinking-streak', JSON.stringify(streakData))
+      
+      // Dispatch custom event for streak footer to update
+      window.dispatchEvent(new CustomEvent('streak-update', { detail: streakData }))
+      
+      console.log("[v0] Streak data updated:", streakData)
+    } catch (error) {
+      console.error("[v0] Error updating streak data:", error)
     }
   }
 
@@ -138,45 +193,127 @@ export default function FlowPage() {
 
   return (
     <div className="min-h-screen bg-ocean-deep relative">
-      {phase === "mind-dump" && <MindDumpScreen onComplete={handleMindDumpComplete} />}
+      <AnimatePresence mode="wait">
+        {phase === "mind-dump" && (
+          <motion.div
+            key="mind-dump"
+            variants={phaseVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={transition}
+          >
+            <MindDumpScreen onComplete={handleMindDumpComplete} />
+          </motion.div>
+        )}
 
-      {phase === "breathing-transition" && (
-        <BreathingTransitionScreen onComplete={handleBreathingComplete} onFetchSpark={fetchSpark} />
-      )}
+        {phase === "breathing-transition" && (
+          <motion.div
+            key="breathing-transition"
+            variants={phaseVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={transition}
+          >
+            <BreathingTransitionScreen onComplete={handleBreathingComplete} onFetchSpark={fetchSpark} />
+          </motion.div>
+        )}
 
-      {phase === "spark" && sparkData && (
-        <SparkScreen
-          insight={sparkData.insight}
-          context={sparkData.context}
-          source={sparkData.source}
-          date={sparkData.date}
-          onContinue={handleSparkContinue}
-          onSkip={handleSkip}
-        />
-      )}
+        {phase === "spark" && sparkData && (
+          <motion.div
+            key="spark"
+            variants={phaseVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={transition}
+          >
+            <SparkScreen
+              insight={sparkData.insight}
+              context={sparkData.context}
+              source={sparkData.source}
+              date={sparkData.date}
+              onContinue={handleSparkContinue}
+              onSkip={handleSkip}
+            />
+          </motion.div>
+        )}
 
-      {phase === "pause" && <PauseScreen onContinue={handlePauseContinue} />}
+        {phase === "pause" && (
+          <motion.div
+            key="pause"
+            variants={phaseVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={transition}
+          >
+            <PauseScreen onContinue={handlePauseContinue} />
+          </motion.div>
+        )}
 
-      {phase === "step" && stepData && (
-        <StepScreen
-          primaryStep={stepData.primary}
-          smallerStep={stepData.smaller}
-          onStepSelected={handleStepSelected}
-          onSkip={handleSkip}
-        />
-      )}
+        {phase === "step" && stepData && (
+          <motion.div
+            key="step"
+            variants={phaseVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={transition}
+          >
+            <StepScreen
+              primaryStep={stepData.primary}
+              smallerStep={stepData.smaller}
+              onStepSelected={handleStepSelected}
+              onSkip={handleSkip}
+            />
+          </motion.div>
+        )}
 
-      {phase === "timer" && selectedStep && stepData && (
-        <TimerScreen
-          duration={selectedDuration}
-          stepText={selectedStep === "primary" ? stepData.primary : stepData.smaller}
-          onComplete={handleTimerComplete}
-        />
-      )}
+        {phase === "timer" && selectedStep && stepData && (
+          <motion.div
+            key="timer"
+            variants={phaseVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={transition}
+          >
+            <TimerScreen
+              duration={selectedDuration}
+              stepText={selectedStep === "primary" ? stepData.primary : stepData.smaller}
+              onComplete={handleTimerComplete}
+            />
+          </motion.div>
+        )}
 
-      {phase === "reflection" && <ReflectionScreen onComplete={handleReflectionComplete} />}
+        {phase === "reflection" && (
+          <motion.div
+            key="reflection"
+            variants={phaseVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={transition}
+          >
+            <ReflectionScreen onComplete={handleReflectionComplete} />
+          </motion.div>
+        )}
 
-      {phase === "celebrate" && <CelebrateScreen onComplete={handleCelebrationComplete} />}
+        {phase === "celebrate" && (
+          <motion.div
+            key="celebrate"
+            variants={phaseVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={transition}
+          >
+            <CelebrateScreen onComplete={handleCelebrationComplete} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <DirectionStreakFooter />
     </div>

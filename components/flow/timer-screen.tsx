@@ -51,8 +51,8 @@ export function TimerScreen({ duration, stepText, onComplete }: TimerScreenProps
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 animate-in fade-in duration-700">
       <div className="max-w-2xl w-full space-y-12 text-center">
         {/* Circular timer */}
-        <div className="relative w-64 h-64 mx-auto">
-          <svg className="w-full h-full -rotate-90">
+        <div className="relative w-48 h-48 md:w-64 md:h-64 mx-auto" role="timer" aria-label={`Timer: ${formatTime(timeLeft)} remaining`}>
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 256 256" aria-hidden="true">
             {/* Background circle */}
             <circle
               cx="128"
@@ -78,7 +78,7 @@ export function TimerScreen({ duration, stepText, onComplete }: TimerScreenProps
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-5xl font-light text-white font-mono tabular-nums">{formatTime(timeLeft)}</p>
+            <p className="text-3xl md:text-5xl font-light text-white font-mono tabular-nums" aria-live="polite">{formatTime(timeLeft)}</p>
           </div>
         </div>
 

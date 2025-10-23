@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
+import { motion } from "framer-motion"
 
 interface BreathingTransitionScreenProps {
   onComplete: () => void
@@ -12,6 +13,7 @@ export function BreathingTransitionScreen({ onComplete, onFetchSpark }: Breathin
   const [breathPhase, setBreathPhase] = useState<"inhale" | "exhale">("inhale")
   const [isLoading, setIsLoading] = useState(true)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [soundEnabled, setSoundEnabled] = useState(false)
   const hasCompletedRef = useRef(false)
   const onCompleteRef = useRef(onComplete)
 
@@ -95,11 +97,14 @@ export function BreathingTransitionScreen({ onComplete, onFetchSpark }: Breathin
       <div className="max-w-2xl w-full space-y-16 text-center">
         {/* Breathing orb */}
         <div className="flex items-center justify-center px-8">
-          <div
+          <motion.div
             className="w-48 h-48 rounded-full bg-gradient-to-br from-coral-600 to-coral-400 shadow-2xl shadow-coral-600/30"
-            style={{
-              transform: isExpanded ? "scale(1.4)" : "scale(1)",
-              transition: "transform 3000ms ease-in-out",
+            animate={{
+              scale: isExpanded ? 1.4 : 1,
+            }}
+            transition={{
+              duration: 3,
+              ease: "easeInOut",
             }}
           />
         </div>
@@ -107,12 +112,24 @@ export function BreathingTransitionScreen({ onComplete, onFetchSpark }: Breathin
         {/* Text */}
         <div className="space-y-6">
           <h1 className="text-3xl md:text-4xl font-light text-white">Breathe in clarity, breathe out noise</h1>
-          <p
+          <motion.p
             key={breathPhase}
-            className="text-lg text-stone-300 leading-relaxed max-w-xl mx-auto animate-in fade-in duration-300"
+            className="text-lg text-stone-300 leading-relaxed max-w-xl mx-auto"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
           >
             {breathPhase === "inhale" ? "Breathe in" : "Breathe out"}
-          </p>
+          </motion.p>
+          
+          {/* Sound toggle */}
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className="text-sm text-stone-400 hover:text-stone-300 transition-colors"
+            aria-label={soundEnabled ? "Disable sound" : "Enable sound"}
+          >
+            {soundEnabled ? "🔊 Sound on" : "🔇 Sound off"}
+          </button>
         </div>
 
         <div className="flex flex-col items-center gap-4">
@@ -121,11 +138,18 @@ export function BreathingTransitionScreen({ onComplete, onFetchSpark }: Breathin
           ) : (
             <div className="flex gap-2">
               {[0, 1, 2].map((i) => (
-                <div
+                <motion.div
                   key={i}
-                  className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                  className={`w-2 h-2 rounded-full ${
                     i < breathCount ? "bg-coral-500" : "bg-stone-600"
                   }`}
+                  animate={{
+                    scale: i < breathCount ? 1.2 : 1,
+                  }}
+                  transition={{
+                    duration: 0.3,
+                    ease: "easeInOut",
+                  }}
                 />
               ))}
             </div>

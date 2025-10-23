@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { motion } from "framer-motion"
 import { Card } from "@/components/ui/card"
 
 interface CelebrateScreenProps {
@@ -10,6 +11,7 @@ interface CelebrateScreenProps {
 export function CelebrateScreen({ onComplete }: CelebrateScreenProps) {
   const [showConfetti, setShowConfetti] = useState(false)
   const [selectedCelebration, setSelectedCelebration] = useState<number | null>(null)
+  const [soundEnabled, setSoundEnabled] = useState(false)
 
   const celebrations = [
     { duration: 2, activity: "Take a mindful walk" },
@@ -34,14 +36,24 @@ export function CelebrateScreen({ onComplete }: CelebrateScreenProps) {
       {showConfetti && (
         <div className="absolute inset-0 pointer-events-none">
           {Array.from({ length: 30 }).map((_, i) => (
-            <div
+            <motion.div
               key={i}
-              className="absolute w-2 h-2 bg-coral-400 rounded-full animate-[fall_3s_ease-out_forwards]"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: "-10px",
-                animationDelay: `${Math.random() * 2}s`,
-                opacity: Math.random(),
+              className="absolute w-2 h-2 bg-coral-400 rounded-full"
+              initial={{ 
+                x: Math.random() * window.innerWidth,
+                y: -10,
+                rotate: 0,
+                scale: 1
+              }}
+              animate={{ 
+                y: window.innerHeight + 10,
+                rotate: 360,
+                scale: 0
+              }}
+              transition={{
+                duration: 2 + Math.random() * 2,
+                delay: Math.random() * 2,
+                ease: "easeOut"
               }}
             />
           ))}
@@ -53,6 +65,15 @@ export function CelebrateScreen({ onComplete }: CelebrateScreenProps) {
         <div className="space-y-6">
           <div className="text-6xl">✨</div>
           <h1 className="text-3xl md:text-4xl font-light text-white">Lightness grows when you honor your direction</h1>
+          
+          {/* Sound toggle */}
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className="text-sm text-stone-400 hover:text-stone-300 transition-colors"
+            aria-label={soundEnabled ? "Disable celebration sound" : "Enable celebration sound"}
+          >
+            {soundEnabled ? "🔊 Sound on" : "🔇 Sound off"}
+          </button>
         </div>
 
         {/* Celebration options */}
@@ -79,15 +100,6 @@ export function CelebrateScreen({ onComplete }: CelebrateScreenProps) {
           I'll celebrate later
         </button>
       </div>
-
-      <style jsx>{`
-        @keyframes fall {
-          to {
-            transform: translateY(100vh) rotate(360deg);
-            opacity: 0;
-          }
-        }
-      `}</style>
     </div>
   )
 }

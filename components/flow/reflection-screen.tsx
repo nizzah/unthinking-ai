@@ -29,16 +29,18 @@ export function ReflectionScreen({ onComplete }: ReflectionScreenProps) {
 
         {/* Felt-Lighter slider */}
         <div className="space-y-8">
-          <div className="flex justify-between items-center px-4">
+          <div className="flex justify-between items-center px-4" role="group" aria-label="Select how you feel now">
             {feelings.map((f) => (
               <button
                 key={f.value}
                 onClick={() => setFeeling(f.value)}
+                aria-pressed={feeling === f.value}
+                aria-label={`${f.label} feeling`}
                 className={`flex flex-col items-center gap-2 transition-all ${
                   feeling === f.value ? "scale-125" : "scale-100 opacity-50"
                 }`}
               >
-                <span className="text-4xl">{f.emoji}</span>
+                <span className="text-4xl" aria-hidden="true">{f.emoji}</span>
                 <span className="text-xs text-stone-400">{f.label}</span>
               </button>
             ))}
@@ -51,6 +53,7 @@ export function ReflectionScreen({ onComplete }: ReflectionScreenProps) {
             max="5"
             value={feeling}
             onChange={(e) => setFeeling(Number(e.target.value))}
+            aria-label="Feeling slider - adjust how you feel from heavy to clear"
             className="w-full h-2 bg-ocean-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-coral-600"
           />
         </div>
