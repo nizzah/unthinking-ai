@@ -1,0 +1,9 @@
+# Ignore files that might confuse Vercel
+node_modules/
+.pnpm-store/
+.yarn/
+yarn.lock
+pnpm-lock.yaml
+*.log
+.env.local
+.env.*.local
