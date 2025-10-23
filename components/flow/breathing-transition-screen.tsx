@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 interface BreathingTransitionScreenProps {
   onComplete: () => void
@@ -12,6 +12,13 @@ export function BreathingTransitionScreen({ onComplete, onFetchSpark }: Breathin
   const [breathPhase, setBreathPhase] = useState<"inhale" | "exhale">("inhale")
   const [isLoading, setIsLoading] = useState(true)
   const [isExpanded, setIsExpanded] = useState(false)
+  const hasCompletedRef = useRef(false)
+  const onCompleteRef = useRef(onComplete)
+
+  // Keep the ref up to date with the latest callback
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
   // Fetch spark on mount
   useEffect(() => {
@@ -22,41 +29,66 @@ export function BreathingTransitionScreen({ onComplete, onFetchSpark }: Breathin
     fetchData()
   }, [onFetchSpark])
 
+  // Main breathing cycle effect - runs once after loading completes
   useEffect(() => {
-    if (isLoading) return
+    if (isLoading || hasCompletedRef.current) return
 
-    console.log("[v0] Starting breathing cycle, breathCount:", breathCount)
-
-    // Complete after 3 breaths
-    if (breathCount >= 3) {
-      console.log("[v0] Completed 3 breaths, advancing to spark")
-      onComplete()
-      return
-    }
-
-    // Start with inhale phase
-    console.log("[v0] Starting inhale phase")
+    console.log("[v0] Starting breathing animation sequence")
+    
+    const startTime = Date.now()
+    let currentBreath = 0
+    let lastPhase: "inhale" | "exhale" = "inhale"
+    const BREATH_DURATION = 6000 // 6 seconds per breath (3 in, 3 out)
+    const TOTAL_BREATHS = 3
+    
+    // Start with inhale
     setBreathPhase("inhale")
     setIsExpanded(true)
+    setBreathCount(0)
 
-    // Switch to exhale after 3 seconds
-    const exhaleTimer = setTimeout(() => {
-      console.log("[v0] Switching to exhale phase")
-      setBreathPhase("exhale")
-      setIsExpanded(false)
-    }, 3000)
+    const breathingInterval = setInterval(() => {
+      const elapsedTime = Date.now() - startTime
+      const currentCycleTime = elapsedTime % BREATH_DURATION
+      const completedBreaths = Math.floor(elapsedTime / BREATH_DURATION)
 
-    // Complete breath cycle after 6 seconds and start next breath
-    const nextBreathTimer = setTimeout(() => {
-      console.log("[v0] Completing breath cycle, incrementing count")
-      setBreathCount((prev) => prev + 1)
-    }, 6000)
+      // Check if we've completed all breaths
+      if (completedBreaths >= TOTAL_BREATHS) {
+        console.log("[v0] Completed 3 breaths, advancing to spark")
+        clearInterval(breathingInterval)
+        hasCompletedRef.current = true
+        onCompleteRef.current() // Use ref instead of direct callback
+        return
+      }
+
+      // Update breath count if it changed
+      if (completedBreaths !== currentBreath) {
+        currentBreath = completedBreaths
+        setBreathCount(completedBreaths)
+        console.log("[v0] Breath count updated to:", completedBreaths)
+      }
+
+      // Determine what phase we should be in based on time
+      const shouldBeInhaling = currentCycleTime < 3000
+
+      // Only update state if phase actually changed
+      if (shouldBeInhaling && lastPhase !== "inhale") {
+        console.log("[v0] Switching to inhale phase")
+        setBreathPhase("inhale")
+        setIsExpanded(true)
+        lastPhase = "inhale"
+      } else if (!shouldBeInhaling && lastPhase !== "exhale") {
+        console.log("[v0] Switching to exhale phase")
+        setBreathPhase("exhale")
+        setIsExpanded(false)
+        lastPhase = "exhale"
+      }
+    }, 100) // Check every 100ms for smooth transitions
 
     return () => {
-      clearTimeout(exhaleTimer)
-      clearTimeout(nextBreathTimer)
+      console.log("[v0] Cleaning up breathing animation")
+      clearInterval(breathingInterval)
     }
-  }, [breathCount, isLoading, onComplete])
+  }, [isLoading]) // Removed onComplete from dependencies!
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 animate-in fade-in duration-700">
