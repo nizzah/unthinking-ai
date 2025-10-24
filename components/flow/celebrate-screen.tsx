@@ -6,17 +6,36 @@ import { Card } from "@/components/ui/card"
 
 interface CelebrateScreenProps {
   onComplete: () => void
+  onStartCelebration: (activity: string, duration: number) => void
+  mindDump?: string
+  sparkInsight?: string
+  selectedStep?: string
+  selectedDuration?: number
 }
 
-export function CelebrateScreen({ onComplete }: CelebrateScreenProps) {
+interface Celebration {
+  duration: number
+  activity: string
+}
+
+export function CelebrateScreen({ 
+  onComplete, 
+  onStartCelebration,
+  mindDump, 
+  sparkInsight, 
+  selectedStep, 
+  selectedDuration 
+}: CelebrateScreenProps) {
   const [showConfetti, setShowConfetti] = useState(false)
   const [selectedCelebration, setSelectedCelebration] = useState<number | null>(null)
-  const [soundEnabled, setSoundEnabled] = useState(false)
+  const [celebrations, setCelebrations] = useState<Celebration[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const celebrations = [
-    { duration: 2, activity: "Take a mindful walk" },
-    { duration: 5, activity: "Play your favorite song" },
-    { duration: 15, activity: "Make yourself tea and sit quietly" },
+  // Fallback celebrations - more fun and personalized
+  const fallbackCelebrations: Celebration[] = [
+    { duration: 1, activity: "🎉 Do a victory dance like you just conquered the world" },
+    { duration: 2, activity: "🌟 Strike a superhero pose and whisper 'I am unstoppable'" },
+    { duration: 5, activity: "✨ Write a love letter to your future self" },
   ]
 
   useEffect(() => {
@@ -25,9 +44,54 @@ export function CelebrateScreen({ onComplete }: CelebrateScreenProps) {
     return () => clearTimeout(timer)
   }, [])
 
-  const handleCelebrate = (duration: number) => {
-    setSelectedCelebration(duration)
-    setTimeout(onComplete, 1000)
+  // Fetch personalized celebrations
+  useEffect(() => {
+    const fetchCelebrations = async () => {
+      console.log("Fetching celebrations with:", { mindDump, sparkInsight, selectedStep, selectedDuration })
+      
+      if (!mindDump || !sparkInsight) {
+        console.log("Missing data, using fallback celebrations")
+        setCelebrations(fallbackCelebrations)
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch("/api/celebrate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mindDump,
+            sparkInsight,
+            selectedStep,
+            selectedDuration,
+          }),
+        })
+
+        console.log("Celebrate API response status:", response.status)
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log("Celebrate API response data:", data)
+          setCelebrations(data.celebrations || fallbackCelebrations)
+        } else {
+          console.log("Celebrate API failed, using fallback")
+          setCelebrations(fallbackCelebrations)
+        }
+      } catch (error) {
+        console.error("Error fetching celebrations:", error)
+        setCelebrations(fallbackCelebrations)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchCelebrations()
+  }, [mindDump, sparkInsight, selectedStep, selectedDuration])
+
+  const handleCelebrate = (celebration: Celebration) => {
+    setSelectedCelebration(celebration.duration)
+    onStartCelebration(celebration.activity, celebration.duration)
   }
 
   return (
@@ -65,38 +129,43 @@ export function CelebrateScreen({ onComplete }: CelebrateScreenProps) {
         <div className="space-y-6">
           <div className="text-6xl">✨</div>
           <h1 className="text-3xl md:text-4xl font-light text-white">Lightness grows when you honor your direction</h1>
-          
-          {/* Sound toggle */}
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="text-sm text-stone-400 hover:text-stone-300 transition-colors"
-            aria-label={soundEnabled ? "Disable celebration sound" : "Enable celebration sound"}
-          >
-            {soundEnabled ? "🔊 Sound on" : "🔇 Sound off"}
-          </button>
         </div>
 
         {/* Celebration options */}
         <div className="space-y-4">
-          <p className="text-lg text-stone-300">Celebrate now</p>
+          <p className="text-lg text-stone-300">Take some time to celebrate however small the step</p>
           <div className="grid gap-4">
-            {celebrations.map((celebration) => (
-              <Card
-                key={celebration.duration}
-                className="bg-ocean-800/30 border-ocean-600 p-6 hover:bg-ocean-800/40 transition-colors cursor-pointer"
-                onClick={() => handleCelebrate(celebration.duration)}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-white text-lg">{celebration.activity}</p>
-                  <span className="text-sm text-stone-400">{celebration.duration} min</span>
-                </div>
-              </Card>
-            ))}
+            {isLoading ? (
+              // Loading state
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="bg-ocean-800/30 border-ocean-600 p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="h-6 bg-stone-600 rounded animate-pulse w-3/4"></div>
+                      <div className="h-4 bg-stone-600 rounded animate-pulse w-12 ml-4 flex-shrink-0"></div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              celebrations.map((celebration) => (
+                <Card
+                  key={celebration.duration}
+                  className="bg-ocean-800/30 border-ocean-600 p-6 hover:bg-ocean-800/40 transition-colors cursor-pointer"
+                  onClick={() => handleCelebrate(celebration)}
+                >
+                  <div className="flex items-start justify-between">
+                    <p className="text-white text-lg text-left">{celebration.activity}</p>
+                    <span className="text-sm text-stone-400 ml-4 flex-shrink-0">{celebration.duration} min</span>
+                  </div>
+                </Card>
+              ))
+            )}
           </div>
         </div>
 
         {/* Skip option */}
-        <button onClick={onComplete} className="text-sm text-stone-400 hover:text-stone-300 transition-colors">
+        <button onClick={onComplete} className="text-sm text-ocean-800 hover:text-ocean-700 transition-colors">
           I'll celebrate later
         </button>
       </div>

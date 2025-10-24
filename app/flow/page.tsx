@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { MindDumpScreen } from "@/components/flow/mind-dump-screen"
@@ -11,6 +11,7 @@ import { StepScreen } from "@/components/flow/step-screen"
 import { TimerScreen } from "@/components/flow/timer-screen"
 import { ReflectionScreen } from "@/components/flow/reflection-screen"
 import { CelebrateScreen } from "@/components/flow/celebrate-screen"
+import { CelebrationTimerScreen } from "@/components/flow/celebration-timer-screen"
 import { DirectionStreakFooter } from "@/components/flow/direction-streak-footer"
 import { ErrorBoundary, useUrlErrorHandler } from "@/components/error-boundary"
 
@@ -23,6 +24,7 @@ type FlowPhase =
   | "timer"
   | "reflection"
   | "celebrate"
+  | "celebration-timer"
 
 interface SparkData {
   insight: string
@@ -64,8 +66,10 @@ export default function FlowPage() {
   const [mindDumpText, setMindDumpText] = useState("")
   const [reflectionText, setReflectionText] = useState("")
   const [isLoadingSpark, setIsLoadingSpark] = useState(false)
+  const [celebrationActivity, setCelebrationActivity] = useState("")
+  const [celebrationDuration, setCelebrationDuration] = useState(0)
 
-  const fetchSpark = async () => {
+  const fetchSpark = useCallback(async () => {
     console.log("[v0] Starting spark fetch...")
     setIsLoadingSpark(true)
     try {
@@ -96,9 +100,17 @@ export default function FlowPage() {
       setIsLoadingSpark(false)
       console.log("[v0] Spark fetch completed, isLoadingSpark:", false)
     }
-  }
+  }, [mindDumpText])
 
-  const handleMindDumpComplete = (text: string) => {
+  // Fetch spark immediately when starting from "Find me a spark" button
+  useEffect(() => {
+    if (startMode !== "dump" && !sparkData && !isLoadingSpark) {
+      console.log("[v0] Starting directly from 'Find me a spark' - fetching spark immediately")
+      fetchSpark()
+    }
+  }, [startMode, sparkData, isLoadingSpark, fetchSpark])
+
+  const handleMindDumpComplete = (text: string, emotions: string[]) => {
     setMindDumpText(text)
     // Start fetching spark immediately when mind dump completes
     fetchSpark()
@@ -144,6 +156,17 @@ export default function FlowPage() {
 
   const handleCelebrationComplete = () => {
     // Navigate back to home screen
+    router.push("/")
+  }
+
+  const handleStartCelebration = (activity: string, duration: number) => {
+    setCelebrationActivity(activity)
+    setCelebrationDuration(duration)
+    setPhase("celebration-timer")
+  }
+
+  const handleCelebrationTimerComplete = () => {
+    // Return to home screen after celebration
     router.push("/")
   }
 
@@ -210,7 +233,9 @@ export default function FlowPage() {
   }
 
   const handleSkip = () => {
-    // Skip to next spark - for now, just regenerate with same mind dump
+    // Clear current spark data and transition to breathing screen while generating new spark
+    setSparkData(null)
+    setPhase("breathing-transition")
     fetchSpark()
   }
 
@@ -342,7 +367,32 @@ export default function FlowPage() {
             exit="exit"
             transition={transition}
           >
-            <CelebrateScreen onComplete={handleCelebrationComplete} />
+            <CelebrateScreen 
+              onComplete={handleCelebrationComplete}
+              onStartCelebration={handleStartCelebration}
+              mindDump={mindDumpText}
+              sparkInsight={sparkData?.insight}
+              selectedStep={selectedStep}
+              selectedDuration={selectedDuration}
+            />
+          </motion.div>
+        )}
+
+        {phase === "celebration-timer" && (
+          <motion.div
+            key="celebration-timer"
+            variants={phaseVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={transition}
+          >
+            <CelebrationTimerScreen
+              activity={celebrationActivity}
+              duration={celebrationDuration}
+              onComplete={handleCelebrationTimerComplete}
+              onReturnToApp={handleCelebrationTimerComplete}
+            />
           </motion.div>
         )}
       </AnimatePresence>

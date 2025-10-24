@@ -11,7 +11,42 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { mindDump } = body
     
+    // Get current time context for personalization
+    const now = new Date()
+    const hour = now.getHours()
+    const dayOfWeek = now.getDay() // 0 = Sunday, 1 = Monday, etc.
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+    
+    // Determine time context
+    let timeContext = ""
+    if (hour >= 5 && hour < 9) {
+      timeContext = "early morning"
+    } else if (hour >= 9 && hour < 12) {
+      timeContext = "morning"
+    } else if (hour >= 12 && hour < 14) {
+      timeContext = "lunch time"
+    } else if (hour >= 14 && hour < 17) {
+      timeContext = "afternoon"
+    } else if (hour >= 17 && hour < 20) {
+      timeContext = "evening"
+    } else {
+      timeContext = "night"
+    }
+    
+    // Determine day context
+    let dayContext = ""
+    if (isWeekend) {
+      dayContext = "weekend"
+    } else if (dayOfWeek === 1) {
+      dayContext = "Monday"
+    } else if (dayOfWeek === 5) {
+      dayContext = "Friday"
+    } else {
+      dayContext = "weekday"
+    }
+    
     console.log("[Spark] Starting hybrid spark generation with mind dump:", mindDump)
+    console.log("[Spark] Time context:", timeContext, "Day context:", dayContext)
 
     // Initialize services
     const vectorize = new VectorizeService()
@@ -264,8 +299,13 @@ ${notionContent || "No Notion notes found or Notion not configured."}
 
     console.log(`[Spark] Combined context length: ${combinedContext.length} characters`)
 
-    // 4. Generate personalized spark using AI with enhanced focus on learnings
-    const prompt = `Based on the user's current mind dump and their past reflections AND learnings below, generate a personalized spark that will help them take gentle action today.
+    // 4. Generate personalized spark using AI with enhanced focus on learnings and time context
+    const prompt = `Based on the user's current mind dump, their past reflections AND learnings below, and the current time context, generate a personalized spark that will help them take gentle action today.
+
+## Current Context:
+- **Time**: ${timeContext} (${hour}:${now.getMinutes().toString().padStart(2, '0')})
+- **Day**: ${dayContext}
+- **Mind Dump**: ${mindDump || "No specific thoughts shared"}
 
 ## Retrieved Content:
 ${combinedContext}
@@ -274,9 +314,19 @@ ${combinedContext}
 1. PRIORITIZE learnings from books, articles, podcasts - these contain external wisdom that can provide fresh perspectives
 2. Connect their current emotional state/concerns to actionable insights from their learnings
 3. Use past reflections to provide context, but lead with insights from their reading/learning
-4. Generate two actionable steps (2-5 minutes each) that address their current state
-5. Make the spark feel personally relevant by connecting learnings to their current situation
-6. For source attribution, be SPECIFIC about what you found:
+4. **TIME-AWARE PERSONALIZATION**: Consider what they might be going through at this time:
+   - Early morning (5-9am): Starting the day, planning, energy building
+   - Morning (9-12pm): Peak productivity, focus, decision-making
+   - Lunch time (12-2pm): Midday pause, reflection, energy dip
+   - Afternoon (2-5pm): Afternoon slump, motivation challenges, winding down work
+   - Evening (5-8pm): Transition from work, family time, relaxation
+   - Night (8pm-5am): Reflection, winding down, or late-night productivity
+   - Weekend: Rest, personal projects, social time, different energy
+   - Monday: Fresh start, motivation, planning
+   - Friday: Week wrap-up, anticipation, celebration
+5. Generate two actionable steps (2-5 minutes each) that address their current state AND time context
+6. Make the spark feel personally relevant by connecting learnings to their current situation and time
+7. For source attribution, be SPECIFIC about what you found:
    - If using learnings, mention the specific book/article/podcast title and author
    - If using Vectorize docs, mention specific themes or patterns you noticed
    - If using Notion notes, reference specific titles or topics
@@ -287,9 +337,9 @@ ${combinedContext}
 ${sources.join(', ')}
 
 ## Priority Order for Spark Generation:
-1. **First**: Insights from books/articles/podcasts that relate to their current situation
-2. **Second**: Patterns from their own reflections that connect to the learnings
-3. **Third**: General wisdom that applies to their current state
+1. **First**: Insights from books/articles/podcasts that relate to their current situation AND time context
+2. **Second**: Patterns from their own reflections that connect to the learnings and current time
+3. **Third**: General wisdom that applies to their current state and time of day
 
 Respond with ONLY a valid JSON object in this exact format (no markdown, no code blocks):
 {
@@ -375,19 +425,109 @@ Respond with ONLY a valid JSON object in this exact format (no markdown, no code
 // Fallback GET method for backward compatibility
 export async function GET() {
   try {
-    console.log("[Spark] GET request - no mind dump provided, using fallback")
+    console.log("[Spark] GET request - no mind dump provided, using time-aware fallback")
 
-    // Return a generic spark when no mind dump is provided
+    // Get current time context for personalization
+    const now = new Date()
+    const hour = now.getHours()
+    const dayOfWeek = now.getDay()
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+    
+    // Determine time context
+    let timeContext = ""
+    if (hour >= 5 && hour < 9) {
+      timeContext = "early morning"
+    } else if (hour >= 9 && hour < 12) {
+      timeContext = "morning"
+    } else if (hour >= 12 && hour < 14) {
+      timeContext = "lunch time"
+    } else if (hour >= 14 && hour < 17) {
+      timeContext = "afternoon"
+    } else if (hour >= 17 && hour < 20) {
+      timeContext = "evening"
+    } else {
+      timeContext = "night"
+    }
+    
+    // Determine day context
+    let dayContext = ""
+    if (isWeekend) {
+      dayContext = "weekend"
+    } else if (dayOfWeek === 1) {
+      dayContext = "Monday"
+    } else if (dayOfWeek === 5) {
+      dayContext = "Friday"
+    } else {
+      dayContext = "weekday"
+    }
+
+    // Time-aware insights
+    let insight = "Sometimes the most courageous thing you can do is take one small step before you feel ready."
+    let context = "You're here, which means you're ready for gentle motion."
+    let primaryStep = "Write down one thing you've been overthinking and what the tiniest next step could be."
+    let smallerStep = "Close your eyes and take three deep breaths, noticing what feels light."
+
+    // Customize based on time context
+    if (timeContext === "early morning") {
+      insight = "The morning holds fresh possibilities. What if today you focused on just one thing that would make you feel accomplished?"
+      context = "Early morning energy is perfect for setting intentions."
+      primaryStep = "Write down one thing you'd like to feel proud of by the end of today."
+      smallerStep = "Take three deep breaths and visualize how you'll feel when you complete that one thing."
+    } else if (timeContext === "morning") {
+      insight = "Your peak energy hours are here. What's the most important thing you could move forward on right now?"
+      context = "Morning focus is at its strongest - use it wisely."
+      primaryStep = "Pick one task that's been on your mind and spend 5 minutes on it."
+      smallerStep = "Write down what's been distracting you and set it aside for later."
+    } else if (timeContext === "lunch time") {
+      insight = "Midday pause is perfect for reflection. What's been working well today, and what needs gentle adjustment?"
+      context = "Lunch time offers a natural break for perspective."
+      primaryStep = "Reflect on one thing that went well this morning and one small adjustment for the afternoon."
+      smallerStep = "Take a moment to appreciate something you've already accomplished today."
+    } else if (timeContext === "afternoon") {
+      insight = "Afternoon energy can dip, but small wins can reignite momentum. What's one tiny thing you could complete?"
+      context = "Afternoon slumps are normal - gentle action helps."
+      primaryStep = "Choose one small task that would give you a sense of completion."
+      smallerStep = "Stand up, stretch, and take three deep breaths to reset your energy."
+    } else if (timeContext === "evening") {
+      insight = "Evening is for winding down and reflection. What did today teach you about yourself?"
+      context = "Evening offers space for gentle reflection and planning."
+      primaryStep = "Write down one thing you learned about yourself today."
+      smallerStep = "Take a moment to appreciate how you've grown or what you've accomplished."
+    } else if (timeContext === "night") {
+      insight = "Night time brings quiet reflection. What's one thing you're grateful for from today?"
+      context = "Night offers peaceful space for gratitude and gentle planning."
+      primaryStep = "Write down three things you're grateful for from today."
+      smallerStep = "Take three deep breaths and let go of any tension from the day."
+    }
+
+    // Customize based on day context
+    if (dayContext === "Monday") {
+      insight = "Monday brings fresh energy and new possibilities. What's one thing you'd like to focus on this week?"
+      context = "Monday motivation is perfect for setting weekly intentions."
+      primaryStep = "Write down one thing you'd like to accomplish this week."
+      smallerStep = "Take three deep breaths and visualize how you'll feel when you complete it."
+    } else if (dayContext === "Friday") {
+      insight = "Friday energy is about completion and celebration. What's one thing you can finish or celebrate today?"
+      context = "Friday is perfect for wrapping up and appreciating progress."
+      primaryStep = "Choose one thing to complete or celebrate from this week."
+      smallerStep = "Take a moment to appreciate what you've accomplished this week."
+    } else if (dayContext === "weekend") {
+      insight = "Weekend time is precious - for rest, creativity, or gentle progress. What would feel most nourishing right now?"
+      context = "Weekend energy is different - honor what you need."
+      primaryStep = "Choose one thing that would feel nourishing or fulfilling for you right now."
+      smallerStep = "Take three deep breaths and check in with what your body and mind need."
+    }
+
     return NextResponse.json({
       spark: {
-        insight: "Sometimes the most courageous thing you can do is take one small step before you feel ready.",
-        context: "You're here, which means you're ready for gentle motion.",
+        insight,
+        context,
         source: "Unthinking wisdom",
         date: "Today",
       },
       steps: {
-        primary: "Write down one thing you've been overthinking and what the tiniest next step could be.",
-        smaller: "Close your eyes and take three deep breaths, noticing what feels light.",
+        primary: primaryStep,
+        smaller: smallerStep,
       },
     })
   } catch (error) {

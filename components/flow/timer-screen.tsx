@@ -106,23 +106,29 @@ export function TimerScreen({ duration, stepText, onComplete }: TimerScreenProps
           </div>
         )}
 
-        {/* Controls */}
+        {/* Time addition controls */}
         <div className="flex gap-4 justify-center">
           <Button
             onClick={() => addTime(1)}
-            variant="outline"
-            className="border-ocean-600 text-ocean-deep hover:bg-ocean-700/50"
+            className="bg-ocean-700 hover:bg-ocean-600 text-white border border-ocean-600 font-medium"
           >
             +1 min
           </Button>
           <Button
             onClick={() => addTime(5)}
-            variant="outline"
-            className="border-ocean-600 text-ocean-deep hover:bg-ocean-700/50"
+            className="bg-ocean-700 hover:bg-ocean-600 text-white border border-ocean-600 font-medium"
           >
             +5 min
           </Button>
-          <Button onClick={onComplete} className="bg-coral-600 hover:bg-coral-700 text-white font-medium">
+        </div>
+
+        {/* Primary CTA */}
+        <div className="flex justify-center">
+          <Button
+            size="lg"
+            onClick={onComplete}
+            className="bg-coral-600 hover:bg-coral-700 text-white px-12 py-6 text-lg rounded-full font-medium"
+          >
             I'm done
           </Button>
         </div>
