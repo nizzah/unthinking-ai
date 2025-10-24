@@ -296,3 +296,12 @@ p {
 .starry-night .bg-coral-600 {
   box-shadow: 0 4px 20px rgba(255, 89, 31, 0.3);
 }
+
+/* Remove text shadow from textarea inputs for better readability */
+.starry-night textarea {
+  text-shadow: none !important;
+}
+
+.starry-night textarea::placeholder {
+  text-shadow: none !important;
+}

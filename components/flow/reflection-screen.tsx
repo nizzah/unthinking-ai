@@ -65,7 +65,7 @@ export function ReflectionScreen({ onComplete }: ReflectionScreenProps) {
             value={reflection}
             onChange={(e) => setReflection(e.target.value)}
             placeholder="Optional reflection..."
-            className="w-full min-h-[150px] bg-ocean-800/30 border border-ocean-600 rounded-2xl p-6 text-white placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-coral-600/50 resize-none leading-relaxed"
+            className="w-full min-h-[150px] bg-white border border-ocean-600 rounded-2xl p-6 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-coral-600/50 resize-none leading-relaxed"
           />
         </div>
 

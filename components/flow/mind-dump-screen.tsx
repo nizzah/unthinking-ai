@@ -65,7 +65,7 @@ export function MindDumpScreen({ onComplete }: MindDumpScreenProps) {
             onChange={(e) => setText(e.target.value)}
             placeholder="Start typing..."
             aria-label="Mind dump - write freely about what's on your mind"
-            className="w-full min-h-[300px] bg-ocean-800/50 border border-ocean-600 rounded-2xl p-6 text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-coral-600/50 resize-none text-lg leading-relaxed"
+            className="w-full min-h-[300px] bg-white border border-ocean-600 rounded-2xl p-6 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-coral-600/50 resize-none text-lg leading-relaxed"
           />
 
           {/* Emotion tags */}
