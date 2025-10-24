@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { MindDumpScreen } from "@/components/flow/mind-dump-screen"
 import { BreathingTransitionScreen } from "@/components/flow/breathing-transition-screen"
@@ -49,6 +49,7 @@ const transition = {
 
 export default function FlowPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const startMode = searchParams.get("start")
 
   const [phase, setPhase] = useState<FlowPhase>(startMode === "dump" ? "mind-dump" : "breathing-transition")
@@ -58,10 +59,16 @@ export default function FlowPage() {
   const [selectedDuration, setSelectedDuration] = useState<number>(2)
   const [mindDumpText, setMindDumpText] = useState("")
   const [reflectionText, setReflectionText] = useState("")
+  const [isLoadingSpark, setIsLoadingSpark] = useState(false)
 
   const fetchSpark = async () => {
+    setIsLoadingSpark(true)
     try {
-      const response = await fetch("/api/spark")
+      const response = await fetch("/api/spark", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mindDump: mindDumpText })
+      })
       const data = await response.json()
       setSparkData(data.spark)
       setStepData(data.steps)
@@ -79,6 +86,8 @@ export default function FlowPage() {
         primary: "Open one of your saved project notes and write just the first sentence of what you'd create.",
         smaller: "Pick your favorite saved idea and read it out loud to yourself.",
       })
+    } finally {
+      setIsLoadingSpark(false)
     }
   }
 
@@ -87,7 +96,8 @@ export default function FlowPage() {
     setPhase("breathing-transition")
   }
 
-  const handleBreathingComplete = () => {
+  const handleBreathingComplete = async () => {
+    await fetchSpark()
     setPhase("spark")
   }
 
@@ -118,11 +128,8 @@ export default function FlowPage() {
   }
 
   const handleCelebrationComplete = () => {
-    // Reset for next session
-    setPhase("mind-dump")
-    setSelectedStep(null)
-    setMindDumpText("")
-    setReflectionText("")
+    // Navigate back to home screen
+    router.push("/")
   }
 
   const submitSession = async (feeling: number, reflection: string) => {
@@ -188,11 +195,17 @@ export default function FlowPage() {
   }
 
   const handleSkip = () => {
+    // Skip to next spark - for now, just regenerate with same mind dump
     fetchSpark()
   }
 
   return (
-    <div className="min-h-screen bg-ocean-deep relative">
+    <div className="min-h-screen starry-night relative overflow-hidden">
+      {/* Painted Sun */}
+      <div className="painted-sun" />
+      
+      {/* Painted Hills */}
+      <div className="painted-hills" />
       <AnimatePresence mode="wait">
         {phase === "mind-dump" && (
           <motion.div
@@ -216,7 +229,7 @@ export default function FlowPage() {
             exit="exit"
             transition={transition}
           >
-            <BreathingTransitionScreen onComplete={handleBreathingComplete} onFetchSpark={fetchSpark} />
+            <BreathingTransitionScreen onComplete={handleBreathingComplete} />
           </motion.div>
         )}
 

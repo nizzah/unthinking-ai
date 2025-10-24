@@ -5,13 +5,11 @@ import { motion } from "framer-motion"
 
 interface BreathingTransitionScreenProps {
   onComplete: () => void
-  onFetchSpark: () => Promise<void>
 }
 
-export function BreathingTransitionScreen({ onComplete, onFetchSpark }: BreathingTransitionScreenProps) {
+export function BreathingTransitionScreen({ onComplete }: BreathingTransitionScreenProps) {
   const [breathCount, setBreathCount] = useState(0)
   const [breathPhase, setBreathPhase] = useState<"inhale" | "exhale">("inhale")
-  const [isLoading, setIsLoading] = useState(true)
   const [isExpanded, setIsExpanded] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(false)
   const hasCompletedRef = useRef(false)
@@ -22,26 +20,17 @@ export function BreathingTransitionScreen({ onComplete, onFetchSpark }: Breathin
     onCompleteRef.current = onComplete
   }, [onComplete])
 
-  // Fetch spark on mount
+  // Main breathing cycle effect - starts immediately
   useEffect(() => {
-    const fetchData = async () => {
-      await onFetchSpark()
-      setIsLoading(false)
-    }
-    fetchData()
-  }, [onFetchSpark])
-
-  // Main breathing cycle effect - runs once after loading completes
-  useEffect(() => {
-    if (isLoading || hasCompletedRef.current) return
+    if (hasCompletedRef.current) return
 
     console.log("[v0] Starting breathing animation sequence")
     
     const startTime = Date.now()
     let currentBreath = 0
     let lastPhase: "inhale" | "exhale" = "inhale"
-    const BREATH_DURATION = 6000 // 6 seconds per breath (3 in, 3 out)
-    const TOTAL_BREATHS = 3
+    const BREATH_DURATION = 8000 // 8 seconds per breath (4 in, 4 out)
+    const TOTAL_BREATHS = 1
     
     // Start with inhale
     setBreathPhase("inhale")
@@ -55,7 +44,7 @@ export function BreathingTransitionScreen({ onComplete, onFetchSpark }: Breathin
 
       // Check if we've completed all breaths
       if (completedBreaths >= TOTAL_BREATHS) {
-        console.log("[v0] Completed 3 breaths, advancing to spark")
+        console.log("[v0] Completed 1 breath, advancing to spark")
         clearInterval(breathingInterval)
         hasCompletedRef.current = true
         onCompleteRef.current() // Use ref instead of direct callback
@@ -70,7 +59,7 @@ export function BreathingTransitionScreen({ onComplete, onFetchSpark }: Breathin
       }
 
       // Determine what phase we should be in based on time
-      const shouldBeInhaling = currentCycleTime < 3000
+      const shouldBeInhaling = currentCycleTime < 4000
 
       // Only update state if phase actually changed
       if (shouldBeInhaling && lastPhase !== "inhale") {
@@ -90,7 +79,7 @@ export function BreathingTransitionScreen({ onComplete, onFetchSpark }: Breathin
       console.log("[v0] Cleaning up breathing animation")
       clearInterval(breathingInterval)
     }
-  }, [isLoading]) // Removed onComplete from dependencies!
+  }, []) // Remove isLoading dependency so animation starts immediately
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 animate-in fade-in duration-700">
@@ -133,27 +122,23 @@ export function BreathingTransitionScreen({ onComplete, onFetchSpark }: Breathin
         </div>
 
         <div className="flex flex-col items-center gap-4">
-          {isLoading ? (
-            <p className="text-sm text-stone-400">Finding your spark...</p>
-          ) : (
-            <div className="flex gap-2">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className={`w-2 h-2 rounded-full ${
-                    i < breathCount ? "bg-coral-500" : "bg-stone-600"
-                  }`}
-                  animate={{
-                    scale: i < breathCount ? 1.2 : 1,
-                  }}
-                  transition={{
-                    duration: 0.3,
-                    ease: "easeInOut",
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          <div className="flex gap-2">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className={`w-2 h-2 rounded-full ${
+                  i < breathCount ? "bg-coral-500" : "bg-stone-600"
+                }`}
+                animate={{
+                  scale: i < breathCount ? 1.2 : 1,
+                }}
+                transition={{
+                  duration: 0.3,
+                  ease: "easeInOut",
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -49,7 +49,7 @@ export function MindDumpScreen({ onComplete }: MindDumpScreenProps) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-16 animate-in fade-in duration-700">
+    <div className="min-h-screen flex items-center justify-center px-4 py-16 animate-in fade-in duration-700 relative z-10">
       <div className="max-w-3xl w-full space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">
@@ -94,7 +94,7 @@ export function MindDumpScreen({ onComplete }: MindDumpScreenProps) {
             size="lg"
             onClick={() => onComplete(text)}
             disabled={text.trim().length === 0}
-            className="bg-coral-600 hover:bg-coral-700 text-ocean-deep px-12 py-6 text-lg rounded-full disabled:opacity-50 font-medium"
+            className="bg-coral-600 hover:bg-coral-700 text-white px-12 py-6 text-lg rounded-full disabled:opacity-50 font-medium"
           >
             Done
           </Button>

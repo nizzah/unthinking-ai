@@ -48,7 +48,7 @@ export function TimerScreen({ duration, stepText, onComplete }: TimerScreenProps
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 animate-in fade-in duration-700">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 animate-in fade-in duration-700 relative z-10">
       <div className="max-w-2xl w-full space-y-12 text-center">
         {/* Circular timer */}
         <div className="relative w-48 h-48 md:w-64 md:h-64 mx-auto" role="timer" aria-label={`Timer: ${formatTime(timeLeft)} remaining`}>
@@ -111,18 +111,18 @@ export function TimerScreen({ duration, stepText, onComplete }: TimerScreenProps
           <Button
             onClick={() => addTime(1)}
             variant="outline"
-            className="border-ocean-600 text-stone-300 hover:bg-ocean-700/50"
+            className="border-ocean-600 text-ocean-deep hover:bg-ocean-700/50"
           >
             +1 min
           </Button>
           <Button
             onClick={() => addTime(5)}
             variant="outline"
-            className="border-ocean-600 text-stone-300 hover:bg-ocean-700/50"
+            className="border-ocean-600 text-ocean-deep hover:bg-ocean-700/50"
           >
             +5 min
           </Button>
-          <Button onClick={onComplete} className="bg-coral-600 hover:bg-coral-700 text-ocean-deep font-medium">
+          <Button onClick={onComplete} className="bg-coral-600 hover:bg-coral-700 text-white font-medium">
             I'm done
           </Button>
         </div>

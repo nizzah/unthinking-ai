@@ -26,7 +26,7 @@ export function PauseScreen({ onContinue }: PauseScreenProps) {
   }, [])
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 animate-in fade-in duration-700">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 animate-in fade-in duration-700 relative z-10">
       <div className="max-w-2xl w-full space-y-16 text-center">
         {/* Breathing orb */}
         <div className="flex items-center justify-center">
@@ -45,7 +45,7 @@ export function PauseScreen({ onContinue }: PauseScreenProps) {
         <Button
           size="lg"
           onClick={onContinue}
-          className="bg-coral-600 hover:bg-coral-700 text-ocean-deep px-12 py-6 text-lg rounded-full font-medium"
+          className="bg-coral-600 hover:bg-coral-700 text-white px-12 py-6 text-lg rounded-full font-medium"
         >
           I'm ready
         </Button>

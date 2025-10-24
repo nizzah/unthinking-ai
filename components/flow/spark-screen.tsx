@@ -16,7 +16,7 @@ export function SparkScreen({ insight, context, source, date, onContinue, onSkip
   const [showSource, setShowSource] = useState(false)
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-16 animate-in fade-in duration-700">
+    <div className="min-h-screen flex items-center justify-center px-4 py-16 animate-in fade-in duration-700 relative z-10">
       <div className="max-w-2xl w-full space-y-12">
         {/* Header */}
         <div className="text-center">
@@ -48,7 +48,7 @@ export function SparkScreen({ insight, context, source, date, onContinue, onSkip
           <Button
             size="lg"
             onClick={onContinue}
-            className="bg-coral-600 hover:bg-coral-700 text-ocean-deep px-12 py-6 text-lg rounded-full font-medium"
+            className="bg-coral-600 hover:bg-coral-700 text-white px-12 py-6 text-lg rounded-full font-medium"
           >
             Continue
           </Button>

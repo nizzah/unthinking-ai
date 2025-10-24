@@ -5,9 +5,12 @@ import { SPARK_SYSTEM_INSTRUCTIONS } from "@/components/agent/spark-prompt"
 import { VectorizeService } from "@/lib/retrieval/vectorize"
 import { getNotionMCPClient } from "@/lib/mcp/client/notion-client"
 
-export async function GET() {
+export async function POST(request: Request) {
   try {
-    console.log("[Spark] Starting hybrid spark generation (Vectorize + Notion)...")
+    const body = await request.json()
+    const { mindDump } = body
+    
+    console.log("[Spark] Starting hybrid spark generation with mind dump:", mindDump)
 
     // Initialize services
     const vectorize = new VectorizeService()
@@ -87,6 +90,9 @@ export async function GET() {
       : "No previous Vectorize reflections found."
 
     const combinedContext = `
+## Current Mind Dump (What's on their mind right now):
+${mindDump || "No mind dump provided"}
+
 ## Vectorize Reflections (Past Data):
 ${vectorizeContext}
 
@@ -97,25 +103,26 @@ ${notionContent || "No Notion notes found or Notion not configured."}
     console.log(`[Spark] Combined context length: ${combinedContext.length} characters`)
 
     // 4. Generate personalized spark using AI
-    const prompt = `Based on the user's past reflections and recent notes below, generate a personalized spark that will help them take gentle action today.
+    const prompt = `Based on the user's current mind dump and their past reflections below, generate a personalized spark that will help them take gentle action today.
 
 ## Retrieved Content:
 ${combinedContext}
 
 ## Instructions:
-1. Identify patterns or themes across both sources
-2. Create a spark that connects their past wisdom to present action
-3. Generate two actionable steps (2-5 minutes each)
-4. If Notion content is available, reference specific notes or themes
+1. PRIORITIZE the current mind dump - this is what's most relevant to them right now
+2. Connect their current emotional state/concerns to gentle action
+3. Use past reflections only to provide context or patterns, not as the primary focus
+4. Generate two actionable steps (2-5 minutes each) that address their current state
+5. Make the spark feel personally relevant to what they just wrote
 
 Respond with ONLY a valid JSON object in this exact format (no markdown, no code blocks):
 {
-  "insight": "one-sentence insight",
-  "context": "why they're seeing this now",
-  "source": "where this came from (mention both Vectorize and Notion if applicable)",
+  "insight": "one-sentence insight that directly addresses their current mind dump",
+  "context": "why they're seeing this now - connect to their current state",
+  "source": "where this came from (current mind dump + any relevant past reflections)",
   "date": "timeframe",
-  "primaryStep": "2-5 minute action",
-  "smallerStep": "even lighter alternative"
+  "primaryStep": "2-5 minute action that addresses their current concern",
+  "smallerStep": "even lighter alternative that still helps with their current state"
 }`
 
     console.log("[Spark] Calling OpenAI to generate hybrid spark...")
@@ -174,6 +181,42 @@ Respond with ONLY a valid JSON object in this exact format (no markdown, no code
     console.error("[Spark] Error generating hybrid spark:", error)
     
     // Return fallback spark on error
+    return NextResponse.json({
+      spark: {
+        insight: "Sometimes the most courageous thing you can do is take one small step before you feel ready.",
+        context: "You're here, which means you're ready for gentle motion.",
+        source: "Unthinking wisdom",
+        date: "Today",
+      },
+      steps: {
+        primary: "Write down one thing you've been overthinking and what the tiniest next step could be.",
+        smaller: "Close your eyes and take three deep breaths, noticing what feels light.",
+      },
+    })
+  }
+}
+
+// Fallback GET method for backward compatibility
+export async function GET() {
+  try {
+    console.log("[Spark] GET request - no mind dump provided, using fallback")
+
+    // Return a generic spark when no mind dump is provided
+    return NextResponse.json({
+      spark: {
+        insight: "Sometimes the most courageous thing you can do is take one small step before you feel ready.",
+        context: "You're here, which means you're ready for gentle motion.",
+        source: "Unthinking wisdom",
+        date: "Today",
+      },
+      steps: {
+        primary: "Write down one thing you've been overthinking and what the tiniest next step could be.",
+        smaller: "Close your eyes and take three deep breaths, noticing what feels light.",
+      },
+    })
+  } catch (error) {
+    console.error("[Spark] Error in GET method:", error)
+    
     return NextResponse.json({
       spark: {
         insight: "Sometimes the most courageous thing you can do is take one small step before you feel ready.",

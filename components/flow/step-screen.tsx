@@ -16,7 +16,7 @@ export function StepScreen({ primaryStep, smallerStep, onStepSelected }: StepScr
   const durations = [2, 5, 15]
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-16 animate-in fade-in duration-700">
+    <div className="min-h-screen flex items-center justify-center px-4 py-16 animate-in fade-in duration-700 relative z-10">
       <div className="max-w-4xl w-full space-y-12">
         {/* Header */}
         <div className="text-center space-y-6">
@@ -54,7 +54,7 @@ export function StepScreen({ primaryStep, smallerStep, onStepSelected }: StepScr
               <Button
                 onClick={() => onStepSelected("primary", selectedDuration)}
                 aria-label={`Start primary step: ${primaryStep}`}
-                className="w-full bg-[#FF591F] hover:bg-[#FF591F]/90 text-[#052135] py-6 rounded-full font-medium"
+                className="w-full bg-[#FF591F] hover:bg-[#FF591F]/90 text-white py-6 rounded-full font-medium"
               >
                 Start this
               </Button>
@@ -78,7 +78,7 @@ export function StepScreen({ primaryStep, smallerStep, onStepSelected }: StepScr
               <Button
                 onClick={() => onStepSelected("smaller", selectedDuration)}
                 aria-label={`Start smaller step: ${smallerStep}`}
-                className="w-full bg-[#FF591F] hover:bg-[#FF591F]/90 text-[#052135] py-6 rounded-full font-medium"
+                className="w-full bg-[#FF591F] hover:bg-[#FF591F]/90 text-white py-6 rounded-full font-medium"
               >
                 Start this
               </Button>

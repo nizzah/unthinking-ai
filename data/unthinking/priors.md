@@ -76,4 +76,3 @@ Whitespace and silence as design elements.
 A Meaning-Tech product: designed not to make people more productive or peaceful, but more aligned.  
 Its metric is meaning, not output.  
 The heart of Unthinking is stillness before motion—helping people remember they already have what they need.
-
