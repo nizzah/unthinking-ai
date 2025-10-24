@@ -5,9 +5,10 @@ import { motion } from "framer-motion"
 
 interface BreathingTransitionScreenProps {
   onComplete: () => void
+  isSparkReady: boolean
 }
 
-export function BreathingTransitionScreen({ onComplete }: BreathingTransitionScreenProps) {
+export function BreathingTransitionScreen({ onComplete, isSparkReady }: BreathingTransitionScreenProps) {
   const [breathCount, setBreathCount] = useState(0)
   const [breathPhase, setBreathPhase] = useState<"inhale" | "exhale">("inhale")
   const [isExpanded, setIsExpanded] = useState(false)
@@ -30,7 +31,6 @@ export function BreathingTransitionScreen({ onComplete }: BreathingTransitionScr
     let currentBreath = 0
     let lastPhase: "inhale" | "exhale" = "inhale"
     const BREATH_DURATION = 8000 // 8 seconds per breath (4 in, 4 out)
-    const TOTAL_BREATHS = 1
     
     // Start with inhale
     setBreathPhase("inhale")
@@ -41,15 +41,6 @@ export function BreathingTransitionScreen({ onComplete }: BreathingTransitionScr
       const elapsedTime = Date.now() - startTime
       const currentCycleTime = elapsedTime % BREATH_DURATION
       const completedBreaths = Math.floor(elapsedTime / BREATH_DURATION)
-
-      // Check if we've completed all breaths
-      if (completedBreaths >= TOTAL_BREATHS) {
-        console.log("[v0] Completed 1 breath, advancing to spark")
-        clearInterval(breathingInterval)
-        hasCompletedRef.current = true
-        onCompleteRef.current() // Use ref instead of direct callback
-        return
-      }
 
       // Update breath count if it changed
       if (completedBreaths !== currentBreath) {
@@ -80,6 +71,19 @@ export function BreathingTransitionScreen({ onComplete }: BreathingTransitionScr
       clearInterval(breathingInterval)
     }
   }, []) // Remove isLoading dependency so animation starts immediately
+
+  // Effect to complete breathing when spark is ready
+  useEffect(() => {
+    if (isSparkReady && !hasCompletedRef.current) {
+      console.log("[v0] Spark is ready, completing breathing animation")
+      hasCompletedRef.current = true
+      
+      // Add a small delay to ensure smooth transition
+      setTimeout(() => {
+        onCompleteRef.current()
+      }, 500)
+    }
+  }, [isSparkReady])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 animate-in fade-in duration-700">

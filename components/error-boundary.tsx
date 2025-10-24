@@ -28,6 +28,21 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       return { hasError: true, error };
     }
     
+    // Check if it's a browser extension error (suppress these)
+    if (
+      error.message.includes('runtime.lastError') ||
+      error.message.includes('message port closed') ||
+      error.message.includes('forward-logs-shared') ||
+      error.message.includes('paywall-configuration-manager') ||
+      error.message.includes('chrome-extension://') ||
+      error.message.includes('net::ERR_FILE_NOT_FOUND') ||
+      error.message.includes('completion_list.html') ||
+      error.message.includes('Unlisted TLDs in URLs are not supported')
+    ) {
+      console.warn('Browser extension error suppressed:', error.message);
+      return { hasError: false };
+    }
+    
     // Re-throw other errors
     throw error;
   }
@@ -35,6 +50,20 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     if (error.message.includes('Unlisted TLDs in URLs are not supported')) {
       console.warn('TLD URL error in component:', error, errorInfo);
+    }
+    
+    // Suppress browser extension errors
+    if (
+      error.message.includes('runtime.lastError') ||
+      error.message.includes('message port closed') ||
+      error.message.includes('forward-logs-shared') ||
+      error.message.includes('paywall-configuration-manager') ||
+      error.message.includes('chrome-extension://') ||
+      error.message.includes('net::ERR_FILE_NOT_FOUND') ||
+      error.message.includes('completion_list.html') ||
+      error.message.includes('Unlisted TLDs in URLs are not supported')
+    ) {
+      console.warn('Browser extension error suppressed in component:', error.message);
     }
   }
 
@@ -72,17 +101,55 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 export function useUrlErrorHandler() {
   React.useEffect(() => {
     const handleError = (event: ErrorEvent) => {
-      if (event.message.includes('Unlisted TLDs in URLs are not supported')) {
+      const message = event.message || '';
+      
+      if (message.includes('Unlisted TLDs in URLs are not supported')) {
         console.warn('TLD URL error caught globally:', event.message);
         event.preventDefault(); // Prevent the error from showing in console
+        return false;
+      }
+      
+      // Suppress browser extension errors
+      if (
+        message.includes('runtime.lastError') ||
+        message.includes('message port closed') ||
+        message.includes('forward-logs-shared') ||
+        message.includes('paywall-configuration-manager') ||
+        message.includes('AuthContext') ||
+        message.includes('chrome-extension://') ||
+        message.includes('net::ERR_FILE_NOT_FOUND') ||
+        message.includes('completion_list.html') ||
+        message.includes('Unlisted TLDs in URLs are not supported')
+      ) {
+        console.warn('Browser extension error suppressed globally:', event.message);
+        event.preventDefault();
         return false;
       }
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (event.reason?.message?.includes('Unlisted TLDs in URLs are not supported')) {
-        console.warn('TLD URL error in promise:', event.reason.message);
+      const reason = event.reason?.message || event.reason?.toString() || '';
+      
+      if (reason.includes('Unlisted TLDs in URLs are not supported')) {
+        console.warn('TLD URL error in promise:', reason);
         event.preventDefault(); // Prevent the error from showing in console
+        return false;
+      }
+      
+      // Suppress browser extension errors
+      if (
+        reason.includes('runtime.lastError') ||
+        reason.includes('message port closed') ||
+        reason.includes('forward-logs-shared') ||
+        reason.includes('paywall-configuration-manager') ||
+        reason.includes('AuthContext') ||
+        reason.includes('chrome-extension://') ||
+        reason.includes('net::ERR_FILE_NOT_FOUND') ||
+        reason.includes('completion_list.html') ||
+        reason.includes('Unlisted TLDs in URLs are not supported')
+      ) {
+        console.warn('Browser extension error suppressed in promise:', reason);
+        event.preventDefault();
         return false;
       }
     };

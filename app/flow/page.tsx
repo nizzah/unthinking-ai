@@ -66,6 +66,7 @@ export default function FlowPage() {
   const [isLoadingSpark, setIsLoadingSpark] = useState(false)
 
   const fetchSpark = async () => {
+    console.log("[v0] Starting spark fetch...")
     setIsLoadingSpark(true)
     try {
       const response = await fetch("/api/spark", {
@@ -74,6 +75,7 @@ export default function FlowPage() {
         body: JSON.stringify({ mindDump: mindDumpText })
       })
       const data = await response.json()
+      console.log("[v0] Spark fetch successful:", data)
       setSparkData(data.spark)
       setStepData(data.steps)
     } catch (error) {
@@ -92,17 +94,26 @@ export default function FlowPage() {
       })
     } finally {
       setIsLoadingSpark(false)
+      console.log("[v0] Spark fetch completed, isLoadingSpark:", false)
     }
   }
 
   const handleMindDumpComplete = (text: string) => {
     setMindDumpText(text)
+    // Start fetching spark immediately when mind dump completes
+    fetchSpark()
     setPhase("breathing-transition")
   }
 
-  const handleBreathingComplete = async () => {
-    await fetchSpark()
-    setPhase("spark")
+  const handleBreathingComplete = () => {
+    // Only transition if spark is actually ready
+    if (sparkData) {
+      console.log("[v0] Spark ready, transitioning to spark screen")
+      setPhase("spark")
+    } else {
+      console.log("[v0] Spark not ready yet, continuing to wait...")
+      // Don't transition - keep showing breathing screen until spark is ready
+    }
   }
 
   const handleSparkContinue = () => {
@@ -234,7 +245,10 @@ export default function FlowPage() {
             exit="exit"
             transition={transition}
           >
-            <BreathingTransitionScreen onComplete={handleBreathingComplete} />
+            <BreathingTransitionScreen 
+              onComplete={handleBreathingComplete} 
+              isSparkReady={!!sparkData}
+            />
           </motion.div>
         )}
 

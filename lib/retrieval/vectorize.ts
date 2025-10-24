@@ -80,7 +80,19 @@ export class VectorizeService {
     }
 
     return documents
-      .map((doc, index) => `Document ${index + 1}:\n${doc.text}`)
+      .map((doc, index) => {
+        // Extract title from source_display_name or source
+        const title = doc.source_display_name || 
+                     doc.source?.split('/').pop()?.replace(/\.(md|txt)$/, '') || 
+                     `Reflection ${index + 1}`;
+        
+        // Try to extract date from metadata or source
+        const date = doc.metadata?.date || 
+                    doc.source?.match(/\d{4}-\d{2}-\d{2}/)?.[0] ||
+                    'recent';
+        
+        return `**${title}** (${date}):\n${doc.text}`;
+      })
       .join("\n\n---\n\n");
   }
 

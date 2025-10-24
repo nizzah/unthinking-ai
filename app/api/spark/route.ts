@@ -67,7 +67,10 @@ export async function POST(request: Request) {
                     ?.join('\n') || '';
                   
                   if (text.trim()) {
-                    notionContent += `\n\nDaily Journal: ${title}\n${text.slice(0, 300)}`;
+                    const entryDate = entry.properties?.Created?.created_time || 
+                                    entry.properties?.Date?.date?.start || 
+                                    'recent';
+                    notionContent += `\n\n**Daily Journal: ${title}** (${entryDate}):\n${text.slice(0, 300)}`;
                   }
                 }
               } catch (contentError) {
@@ -80,12 +83,12 @@ export async function POST(request: Request) {
         }
       }
 
-      // Get recent learnings from readings database
+      // Get recent learnings from readings database with enhanced content extraction
       if (NOTION_DB.readings && notionTools["API-post-database-query"]) {
         try {
           const readingsResult = await notionTools["API-post-database-query"].execute({
             database_id: NOTION_DB.readings,
-            page_size: 2,
+            page_size: 3, // Increased from 2 to get more content
             sorts: [{ property: "Created", direction: "descending" }]
           });
           
@@ -96,9 +99,46 @@ export async function POST(request: Request) {
             for (const entry of parsed.results || []) {
               const title = entry.properties?.Name?.title?.[0]?.plain_text || "Untitled";
               const summary = entry.properties?.Summary?.rich_text?.[0]?.plain_text || "";
+              const author = entry.properties?.Author?.rich_text?.[0]?.plain_text || "";
+              const type = entry.properties?.Type?.select?.name || "";
+              const tags = entry.properties?.Tags?.multi_select?.map((tag: any) => tag.name).join(', ') || "";
               
-              if (summary.trim()) {
-                notionContent += `\n\nLearning: ${title}\n${summary}`;
+              // Get full page content, not just summary
+              try {
+                const contentResult = await notionTools["API-get-block-children"].execute({
+                  block_id: entry.id
+                });
+                
+                let fullContent = summary;
+                if (contentResult?.content?.[0]?.text) {
+                  const blocksParsed = JSON.parse(contentResult.content[0].text);
+                  const pageText = blocksParsed.results
+                    ?.filter((b: any) => b.type === 'paragraph' && b.paragraph?.rich_text)
+                    ?.map((b: any) => b.paragraph.rich_text.map((t: any) => t.plain_text).join(''))
+                    ?.join('\n') || '';
+                  
+                  if (pageText.trim()) {
+                    fullContent = pageText.slice(0, 500); // Get more content
+                  }
+                }
+                
+                if (fullContent.trim()) {
+                  const entryDate = entry.properties?.Created?.created_time || 
+                                  entry.properties?.Date?.date?.start || 
+                                  'recent';
+                  const sourceInfo = [type, author].filter(Boolean).join(' - ');
+                  notionContent += `\n\n**${title}**${sourceInfo ? ` (${sourceInfo})` : ''} (${entryDate}):\n${fullContent}`;
+                  if (tags) {
+                    notionContent += `\nTags: ${tags}`;
+                  }
+                }
+              } catch (contentError) {
+                console.log(`[Spark] Error getting content for reading ${entry.id}:`, contentError);
+                // Fallback to summary only
+                if (summary.trim()) {
+                  const entryDate = entry.properties?.Created?.created_time || 'recent';
+                  notionContent += `\n\n**${title}** (${entryDate}):\n${summary}`;
+                }
               }
             }
           }
@@ -107,67 +147,70 @@ export async function POST(request: Request) {
         }
       }
 
-      // Context-aware search based on mind dump emotional keywords
+      // Context-aware search for relevant learnings based on mind dump
       if (notionTools["API-post-search"]) {
-        const emotionalKeywords = {
-          stress: ['overwhelmed', 'stressed', 'anxious', 'worried', 'pressure'],
-          energy: ['tired', 'exhausted', 'energized', 'motivated', 'drained'],
-          clarity: ['confused', 'stuck', 'clear', 'focused', 'unclear'],
-          progress: ['stuck', 'progress', 'breakthrough', 'insight', 'blocked']
-        };
+        // Extract key themes from mind dump for targeted search
+        const mindDumpWords = mindDump.toLowerCase().split(/\s+/).filter(word => word.length > 3);
+        const keyThemes = mindDumpWords.slice(0, 3); // Use first 3 meaningful words
         
-        // Find relevant emotional keywords in mind dump
-        const relevantEmotions = [];
-        for (const [emotion, keywords] of Object.entries(emotionalKeywords)) {
-          if (keywords.some(keyword => mindDump.toLowerCase().includes(keyword))) {
-            relevantEmotions.push(keywords.join(' OR '));
-          }
-        }
+        // Search for relevant learnings that might help with current situation
+        const learningSearchQueries = [
+          // Direct search using mind dump themes
+          keyThemes.join(' OR '),
+          // Broader emotional/psychological themes
+          'fear OR failure OR courage OR action OR perfection',
+          'overthinking OR analysis OR paralysis OR decision',
+          'learning OR insight OR wisdom OR growth'
+        ];
         
-        // Use relevant emotions or default search
-        const searchQuery = relevantEmotions.length > 0 
-          ? relevantEmotions[0] 
-          : "reflection OR insight OR learning OR pattern";
-        
-        try {
-          const searchResult = await notionTools["API-post-search"].execute({
-            query: searchQuery,
-            page_size: 2
-          });
-          
-          if (searchResult?.content?.[0]?.text) {
-            const searchData = JSON.parse(searchResult.content[0].text);
-            console.log(`[Spark] Found ${searchData.results.length} relevant Notion pages for query: ${searchQuery}`);
+        for (const searchQuery of learningSearchQueries.slice(0, 2)) { // Limit to 2 searches
+          try {
+            const searchResult = await notionTools["API-post-search"].execute({
+              query: searchQuery,
+              page_size: 2,
+              filter: {
+                property: "object",
+                value: "page"
+              }
+            });
             
-            for (const page of searchData.results.slice(0, 2)) {
-              const pageTitle = page.properties?.Name?.title?.[0]?.plain_text || 
-                              page.properties?.title?.title?.[0]?.plain_text || 
-                              'Untitled';
+            if (searchResult?.content?.[0]?.text) {
+              const searchData = JSON.parse(searchResult.content[0].text);
+              console.log(`[Spark] Found ${searchData.results.length} relevant pages for query: ${searchQuery}`);
               
-              // Get page content
-              try {
-                const content = await notionTools["API-get-block-children"].execute({
-                  block_id: page.id
-                });
+              for (const page of searchData.results.slice(0, 2)) {
+                const pageTitle = page.properties?.Name?.title?.[0]?.plain_text || 
+                                page.properties?.title?.title?.[0]?.plain_text || 
+                                'Untitled';
                 
-                if (content?.content?.[0]?.text) {
-                  const blocksParsed = JSON.parse(content.content[0].text);
-                  const pageText = blocksParsed.results
-                    ?.filter((b: any) => b.type === 'paragraph' && b.paragraph?.rich_text)
-                    ?.map((b: any) => b.paragraph.rich_text.map((t: any) => t.plain_text).join(''))
-                    ?.join('\n') || '';
-                    
-                  if (pageText.trim()) {
-                    notionContent += `\n\nRelevant Insight: ${pageTitle}\n${pageText.slice(0, 200)}`;
+                // Get page content
+                try {
+                  const content = await notionTools["API-get-block-children"].execute({
+                    block_id: page.id
+                  });
+                  
+                  if (content?.content?.[0]?.text) {
+                    const blocksParsed = JSON.parse(content.content[0].text);
+                    const pageText = blocksParsed.results
+                      ?.filter((b: any) => b.type === 'paragraph' && b.paragraph?.rich_text)
+                      ?.map((b: any) => b.paragraph.rich_text.map((t: any) => t.plain_text).join(''))
+                      ?.join('\n') || '';
+                      
+                    if (pageText.trim()) {
+                      const pageDate = page.properties?.Created?.created_time || 
+                                     page.properties?.Date?.date?.start || 
+                                     'recent';
+                      notionContent += `\n\n**Relevant Learning: ${pageTitle}** (${pageDate}):\n${pageText.slice(0, 300)}`;
+                    }
                   }
+                } catch (pageError) {
+                  console.log(`[Spark] Error getting content for page ${page.id}:`, pageError);
                 }
-              } catch (pageError) {
-                console.log(`[Spark] Error getting content for page ${page.id}:`, pageError);
               }
             }
+          } catch (searchError) {
+            console.log(`[Spark] Search query "${searchQuery}" failed:`, searchError);
           }
-        } catch (searchError) {
-          console.log(`[Spark] Search query "${searchQuery}" failed:`, searchError);
         }
       }
       
@@ -176,10 +219,37 @@ export async function POST(request: Request) {
       console.log("[Spark] Enhanced Notion MCP failed:", notionError.message)
     }
 
-    // 3. Combine all sources
+    // 3. Combine all sources with specific attribution
     const vectorizeContext = vectorizeDocs.length > 0
       ? vectorize.formatDocumentsForContext(vectorizeDocs)
       : "No previous Vectorize reflections found."
+
+    // Create specific source attribution with focus on learnings
+    const sources = []
+    if (vectorizeDocs.length > 0) {
+      sources.push(`${vectorizeDocs.length} past reflection${vectorizeDocs.length > 1 ? 's' : ''} from your journal`)
+    }
+    if (notionContent.trim()) {
+      const notionEntries = notionContent.split('\n\n').filter(entry => entry.trim())
+      const learningEntries = notionEntries.filter(entry => 
+        entry.includes('**') && !entry.includes('Daily Journal') && !entry.includes('Relevant Learning')
+      )
+      const journalEntries = notionEntries.filter(entry => entry.includes('Daily Journal'))
+      const searchEntries = notionEntries.filter(entry => entry.includes('Relevant Learning'))
+      
+      if (learningEntries.length > 0) {
+        sources.push(`${learningEntries.length} learning${learningEntries.length > 1 ? 's' : ''} from books/articles/podcasts`)
+      }
+      if (journalEntries.length > 0) {
+        sources.push(`${journalEntries.length} recent journal entr${journalEntries.length > 1 ? 'ies' : 'y'}`)
+      }
+      if (searchEntries.length > 0) {
+        sources.push(`${searchEntries.length} relevant insight${searchEntries.length > 1 ? 's' : ''} from your notes`)
+      }
+    }
+    if (sources.length === 0) {
+      sources.push("your current thoughts")
+    }
 
     const combinedContext = `
 ## Current Mind Dump (What's on their mind right now):
@@ -194,25 +264,39 @@ ${notionContent || "No Notion notes found or Notion not configured."}
 
     console.log(`[Spark] Combined context length: ${combinedContext.length} characters`)
 
-    // 4. Generate personalized spark using AI
-    const prompt = `Based on the user's current mind dump and their past reflections below, generate a personalized spark that will help them take gentle action today.
+    // 4. Generate personalized spark using AI with enhanced focus on learnings
+    const prompt = `Based on the user's current mind dump and their past reflections AND learnings below, generate a personalized spark that will help them take gentle action today.
 
 ## Retrieved Content:
 ${combinedContext}
 
 ## Instructions:
-1. PRIORITIZE the current mind dump - this is what's most relevant to them right now
-2. Connect their current emotional state/concerns to gentle action
-3. Use past reflections only to provide context or patterns, not as the primary focus
+1. PRIORITIZE learnings from books, articles, podcasts - these contain external wisdom that can provide fresh perspectives
+2. Connect their current emotional state/concerns to actionable insights from their learnings
+3. Use past reflections to provide context, but lead with insights from their reading/learning
 4. Generate two actionable steps (2-5 minutes each) that address their current state
-5. Make the spark feel personally relevant to what they just wrote
+5. Make the spark feel personally relevant by connecting learnings to their current situation
+6. For source attribution, be SPECIFIC about what you found:
+   - If using learnings, mention the specific book/article/podcast title and author
+   - If using Vectorize docs, mention specific themes or patterns you noticed
+   - If using Notion notes, reference specific titles or topics
+   - Avoid generic phrases like "Document 1" or vague dates
+   - Make it clear WHY this insight is relevant to them right now
+
+## Available Sources:
+${sources.join(', ')}
+
+## Priority Order for Spark Generation:
+1. **First**: Insights from books/articles/podcasts that relate to their current situation
+2. **Second**: Patterns from their own reflections that connect to the learnings
+3. **Third**: General wisdom that applies to their current state
 
 Respond with ONLY a valid JSON object in this exact format (no markdown, no code blocks):
 {
-  "insight": "one-sentence insight that directly addresses their current mind dump",
-  "context": "why they're seeing this now - connect to their current state",
-  "source": "where this came from (current mind dump + any relevant past reflections)",
-  "date": "timeframe",
+  "insight": "one-sentence insight that draws from their learnings and directly addresses their current mind dump - be specific and actionable, not generic",
+  "context": "specific reason why they're seeing this now - reference actual learnings, books, or patterns from their data",
+  "source": "specific attribution: mention actual book/article titles, authors, or themes from their learnings and reflections",
+  "date": "specific timeframe when relevant (e.g., 'from your recent reading', 'from your journal entries this month')",
   "primaryStep": "2-5 minute action that addresses their current concern",
   "smallerStep": "even lighter alternative that still helps with their current state"
 }`

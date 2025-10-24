@@ -231,10 +231,16 @@ const phaseVariants = {
 - **Files Updated:** Notion MCP integration files to use sanitized URLs
 - **Result:** Graceful error handling, no more console errors
 
-### Breathing Animation Fix
-- **Issue:** Animation was waiting for API call completion
-- **Solution:** Background API fetching with immediate animation start
-- **Result:** Smooth, non-blocking user experience
+### Breathing Animation Fix (Major Improvement ✅)
+- **Issue:** Animation was waiting for API call completion, causing pauses and showing fallback messages prematurely
+- **Root Cause:** Spark processing happened after breathing completed, not during it
+- **Solution:** Restructured timing and removed premature fallbacks
+- **Changes Made:**
+  - Modified spark fetching to start immediately when mind dump completes
+  - Updated breathing animation to continue until spark is actually ready
+  - Removed premature fallback messages that showed before real spark
+  - Fixed transition logic to only show spark when data is ready
+- **Result:** Seamless breathing-to-spark transition with no waiting states or premature fallbacks
 
 ### Homepage CTA Updates
 - **Change:** Both buttons now primary style with coral background
