@@ -1,4 +1,5 @@
-import { getNotionMCPClient } from "@/lib/mcp";
+import { getNotionMCPClient } from "@/lib/mcp/client/notion-client";
+import { sanitizeUrl } from "@/lib/url-utils";
 
 export type NotionHit = { id: string; title: string; url?: string; snippet?: string };
 

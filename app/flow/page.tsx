@@ -12,6 +12,7 @@ import { TimerScreen } from "@/components/flow/timer-screen"
 import { ReflectionScreen } from "@/components/flow/reflection-screen"
 import { CelebrateScreen } from "@/components/flow/celebrate-screen"
 import { DirectionStreakFooter } from "@/components/flow/direction-streak-footer"
+import { ErrorBoundary, useUrlErrorHandler } from "@/components/error-boundary"
 
 type FlowPhase =
   | "mind-dump"
@@ -51,6 +52,9 @@ export default function FlowPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const startMode = searchParams.get("start")
+  
+  // Handle URL-related errors globally
+  useUrlErrorHandler()
 
   const [phase, setPhase] = useState<FlowPhase>(startMode === "dump" ? "mind-dump" : "breathing-transition")
   const [sparkData, setSparkData] = useState<SparkData | null>(null)
@@ -200,7 +204,8 @@ export default function FlowPage() {
   }
 
   return (
-    <div className="min-h-screen starry-night relative overflow-hidden">
+    <ErrorBoundary>
+      <div className="min-h-screen starry-night relative overflow-hidden">
       {/* Painted Sun */}
       <div className="painted-sun" />
       
@@ -329,6 +334,7 @@ export default function FlowPage() {
       </AnimatePresence>
 
       <DirectionStreakFooter />
-    </div>
+      </div>
+    </ErrorBoundary>
   )
 }

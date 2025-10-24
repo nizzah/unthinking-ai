@@ -1,5 +1,6 @@
 type McpToolCall = (tool: string, args: any) => Promise<any>;
 import { NOTION_DB, NOTION_PROPS } from "./notion-config";
+import { sanitizeUrl } from "./url-utils";
 
 async function notionTitleSearch(call: McpToolCall, query: string, limit = 5) {
   const res = await call("API-post-search", { query, page_size: limit }).catch(()=>null);
@@ -65,7 +66,7 @@ export async function fetchNotionSmart(call: McpToolCall, q: string, cats: strin
       
       for (const r of results) {
         const title = r.properties?.Name?.title?.[0]?.plain_text || "Untitled";
-        const url = r.url;
+        const url = sanitizeUrl(r.url || "");
         
         // Get page content
         let text = "";
