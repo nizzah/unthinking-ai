@@ -3,7 +3,7 @@ import { openai } from "@ai-sdk/openai"
 import { generateText } from "ai"
 import { SPARK_SYSTEM_INSTRUCTIONS } from "@/components/agent/spark-prompt"
 import { VectorizeService } from "@/lib/retrieval/vectorize"
-import { getNotionMCPClient } from "@/lib/mcp/client/notion-client"
+import { getNotionClient, getPageSnippet } from "@/lib/notion"
 import { NOTION_DB } from "@/lib/notion-config"
 
 export async function POST(request: Request) {
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
 
     // Initialize services
     const vectorize = new VectorizeService()
-    let vectorizeDocs = []
+    let vectorizeDocs: Awaited<ReturnType<typeof vectorize.retrieveDocuments>> = []
     let notionContent = ""
 
     // 1. Retrieve from Vectorize (existing reflections)
@@ -64,194 +64,101 @@ export async function POST(request: Request) {
       console.log("[Spark] Vectorize retrieval failed:", error)
     }
 
-    // 2. Enhanced Notion MCP retrieval (database-specific + context-aware)
+    // 2. Notion retrieval via direct REST API (works in Vercel serverless)
     try {
-      const notionClient = getNotionMCPClient()
-      await notionClient.connect()
-      const notionTools = await notionClient.getTools()
-      
-      console.log(`[Spark] Available Notion tools:`, Object.keys(notionTools))
-      
-      // Get recent daily journal entries (most relevant for current state)
-      if (NOTION_DB.daily && notionTools["API-post-database-query"]) {
-        try {
-          const dailyResult = await notionTools["API-post-database-query"].execute({
-            database_id: NOTION_DB.daily,
-            page_size: 2,
-            sorts: [{ property: "Created", direction: "descending" }]
-          });
-          
-          if (dailyResult?.content?.[0]?.text) {
-            const parsed = JSON.parse(dailyResult.content[0].text);
-            console.log(`[Spark] Found ${parsed.results.length} daily journal entries`);
-            
-            for (const entry of parsed.results || []) {
-              const title = entry.properties?.Name?.title?.[0]?.plain_text || "Untitled";
-              
-              // Get page content
-              try {
-                const contentResult = await notionTools["API-get-block-children"].execute({
-                  block_id: entry.id
-                });
-                
-                if (contentResult?.content?.[0]?.text) {
-                  const blocksParsed = JSON.parse(contentResult.content[0].text);
-                  const text = blocksParsed.results
-                    ?.filter((b: any) => b.type === 'paragraph' && b.paragraph?.rich_text)
-                    ?.map((b: any) => b.paragraph.rich_text.map((t: any) => t.plain_text).join(''))
-                    ?.join('\n') || '';
-                  
-                  if (text.trim()) {
-                    const entryDate = entry.properties?.Created?.created_time || 
-                                    entry.properties?.Date?.date?.start || 
-                                    'recent';
-                    notionContent += `\n\n**Daily Journal: ${title}** (${entryDate}):\n${text.slice(0, 300)}`;
-                  }
-                }
-              } catch (contentError) {
-                console.log(`[Spark] Error getting content for ${entry.id}:`, contentError);
-              }
-            }
-          }
-        } catch (error) {
-          console.log("[Spark] Daily journal query failed:", error);
-        }
-      }
+      const notionClient = getNotionClient()
 
-      // Get recent learnings from readings database with enhanced content extraction
-      if (NOTION_DB.readings && notionTools["API-post-database-query"]) {
-        try {
-          const readingsResult = await notionTools["API-post-database-query"].execute({
-            database_id: NOTION_DB.readings,
-            page_size: 3, // Increased from 2 to get more content
-            sorts: [{ property: "Created", direction: "descending" }]
-          });
-          
-          if (readingsResult?.content?.[0]?.text) {
-            const parsed = JSON.parse(readingsResult.content[0].text);
-            console.log(`[Spark] Found ${parsed.results.length} reading entries`);
-            
-            for (const entry of parsed.results || []) {
-              const title = entry.properties?.Name?.title?.[0]?.plain_text || "Untitled";
-              const summary = entry.properties?.Summary?.rich_text?.[0]?.plain_text || "";
-              const author = entry.properties?.Author?.rich_text?.[0]?.plain_text || "";
-              const type = entry.properties?.Type?.select?.name || "";
-              const tags = entry.properties?.Tags?.multi_select?.map((tag: any) => tag.name).join(', ') || "";
-              
-              // Get full page content, not just summary
-              try {
-                const contentResult = await notionTools["API-get-block-children"].execute({
-                  block_id: entry.id
-                });
-                
-                let fullContent = summary;
-                if (contentResult?.content?.[0]?.text) {
-                  const blocksParsed = JSON.parse(contentResult.content[0].text);
-                  const pageText = blocksParsed.results
-                    ?.filter((b: any) => b.type === 'paragraph' && b.paragraph?.rich_text)
-                    ?.map((b: any) => b.paragraph.rich_text.map((t: any) => t.plain_text).join(''))
-                    ?.join('\n') || '';
-                  
-                  if (pageText.trim()) {
-                    fullContent = pageText.slice(0, 500); // Get more content
-                  }
-                }
-                
-                if (fullContent.trim()) {
-                  const entryDate = entry.properties?.Created?.created_time || 
-                                  entry.properties?.Date?.date?.start || 
-                                  'recent';
-                  const sourceInfo = [type, author].filter(Boolean).join(' - ');
-                  notionContent += `\n\n**${title}**${sourceInfo ? ` (${sourceInfo})` : ''} (${entryDate}):\n${fullContent}`;
-                  if (tags) {
-                    notionContent += `\nTags: ${tags}`;
-                  }
-                }
-              } catch (contentError) {
-                console.log(`[Spark] Error getting content for reading ${entry.id}:`, contentError);
-                // Fallback to summary only
-                if (summary.trim()) {
-                  const entryDate = entry.properties?.Created?.created_time || 'recent';
-                  notionContent += `\n\n**${title}** (${entryDate}):\n${summary}`;
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.log("[Spark] Readings query failed:", error);
-        }
-      }
-
-      // Context-aware search for relevant learnings based on mind dump
-      if (notionTools["API-post-search"]) {
-        // Extract key themes from mind dump for targeted search
-        const mindDumpWords = mindDump.toLowerCase().split(/\s+/).filter(word => word.length > 3);
-        const keyThemes = mindDumpWords.slice(0, 3); // Use first 3 meaningful words
-        
-        // Search for relevant learnings that might help with current situation
-        const learningSearchQueries = [
-          // Direct search using mind dump themes
-          keyThemes.join(' OR '),
-          // Broader emotional/psychological themes
-          'fear OR failure OR courage OR action OR perfection',
-          'overthinking OR analysis OR paralysis OR decision',
-          'learning OR insight OR wisdom OR growth'
-        ];
-        
-        for (const searchQuery of learningSearchQueries.slice(0, 2)) { // Limit to 2 searches
+      if (notionClient) {
+        // Get recent daily journal entries
+        if (NOTION_DB.daily) {
           try {
-            const searchResult = await notionTools["API-post-search"].execute({
-              query: searchQuery,
+            const dailyResult = await notionClient.dataSources.query({
+              data_source_id: NOTION_DB.daily,
               page_size: 2,
-              filter: {
-                property: "object",
-                value: "page"
-              }
-            });
-            
-            if (searchResult?.content?.[0]?.text) {
-              const searchData = JSON.parse(searchResult.content[0].text);
-              console.log(`[Spark] Found ${searchData.results.length} relevant pages for query: ${searchQuery}`);
-              
-              for (const page of searchData.results.slice(0, 2)) {
-                const pageTitle = page.properties?.Name?.title?.[0]?.plain_text || 
-                                page.properties?.title?.title?.[0]?.plain_text || 
-                                'Untitled';
-                
-                // Get page content
-                try {
-                  const content = await notionTools["API-get-block-children"].execute({
-                    block_id: page.id
-                  });
-                  
-                  if (content?.content?.[0]?.text) {
-                    const blocksParsed = JSON.parse(content.content[0].text);
-                    const pageText = blocksParsed.results
-                      ?.filter((b: any) => b.type === 'paragraph' && b.paragraph?.rich_text)
-                      ?.map((b: any) => b.paragraph.rich_text.map((t: any) => t.plain_text).join(''))
-                      ?.join('\n') || '';
-                      
-                    if (pageText.trim()) {
-                      const pageDate = page.properties?.Created?.created_time || 
-                                     page.properties?.Date?.date?.start || 
-                                     'recent';
-                      notionContent += `\n\n**Relevant Learning: ${pageTitle}** (${pageDate}):\n${pageText.slice(0, 300)}`;
-                    }
-                  }
-                } catch (pageError) {
-                  console.log(`[Spark] Error getting content for page ${page.id}:`, pageError);
-                }
+              sorts: [{ property: "Created", direction: "descending" }],
+            })
+            console.log(`[Spark] Found ${dailyResult.results.length} daily journal entries`)
+
+            for (const entry of dailyResult.results) {
+              const props = (entry as any).properties
+              const title = props?.Name?.title?.[0]?.plain_text || "Untitled"
+              const entryDate = props?.Created?.created_time || props?.Date?.date?.start || "recent"
+              const text = await getPageSnippet(entry.id, 300)
+              if (text.trim()) {
+                notionContent += `\n\n**Daily Journal: ${title}** (${entryDate}):\n${text}`
               }
             }
-          } catch (searchError) {
-            console.log(`[Spark] Search query "${searchQuery}" failed:`, searchError);
+          } catch (error) {
+            console.log("[Spark] Daily journal query failed:", error)
+          }
+        }
+
+        // Get recent readings/learnings
+        if (NOTION_DB.readings) {
+          try {
+            const readingsResult = await notionClient.dataSources.query({
+              data_source_id: NOTION_DB.readings,
+              page_size: 3,
+              sorts: [{ property: "Created", direction: "descending" }],
+            })
+            console.log(`[Spark] Found ${readingsResult.results.length} reading entries`)
+
+            for (const entry of readingsResult.results) {
+              const props = (entry as any).properties
+              const title = props?.Name?.title?.[0]?.plain_text || "Untitled"
+              const summary = props?.Summary?.rich_text?.[0]?.plain_text || ""
+              const author = props?.Author?.rich_text?.[0]?.plain_text || ""
+              const type = props?.Type?.select?.name || ""
+              const tags = props?.Tags?.multi_select?.map((tag: any) => tag.name).join(", ") || ""
+              const entryDate = props?.Created?.created_time || props?.Date?.date?.start || "recent"
+              const sourceInfo = [type, author].filter(Boolean).join(" - ")
+
+              const pageText = await getPageSnippet(entry.id, 500)
+              const fullContent = pageText.trim() || summary
+              if (fullContent.trim()) {
+                notionContent += `\n\n**${title}**${sourceInfo ? ` (${sourceInfo})` : ""} (${entryDate}):\n${fullContent}`
+                if (tags) notionContent += `\nTags: ${tags}`
+              }
+            }
+          } catch (error) {
+            console.log("[Spark] Readings query failed:", error)
+          }
+        }
+
+        // Context-aware search based on mind dump themes
+        if (mindDump) {
+          const mindDumpWords = mindDump.toLowerCase().split(/\s+/).filter((word: string) => word.length > 3)
+          const searchQuery = mindDumpWords.slice(0, 3).join(" ")
+          if (searchQuery) {
+            try {
+              const searchResult = await notionClient.search({
+                query: searchQuery,
+                page_size: 2,
+                filter: { property: "object", value: "page" },
+              })
+              console.log(`[Spark] Found ${searchResult.results.length} relevant pages for query: ${searchQuery}`)
+
+              for (const page of searchResult.results) {
+                const props = (page as any).properties
+                const pageTitle =
+                  props?.Name?.title?.[0]?.plain_text ||
+                  props?.title?.title?.[0]?.plain_text ||
+                  "Untitled"
+                const pageDate =
+                  props?.Created?.created_time || props?.Date?.date?.start || "recent"
+                const pageText = await getPageSnippet(page.id, 300)
+                if (pageText.trim()) {
+                  notionContent += `\n\n**Relevant Learning: ${pageTitle}** (${pageDate}):\n${pageText}`
+                }
+              }
+            } catch (searchError) {
+              console.log(`[Spark] Search query failed:`, searchError)
+            }
           }
         }
       }
-      
-      await notionClient.disconnect()
     } catch (notionError) {
-      console.log("[Spark] Enhanced Notion MCP failed:", notionError.message)
+      console.log("[Spark] Notion retrieval failed:", notionError instanceof Error ? notionError.message : notionError)
     }
 
     // 3. Combine all sources with specific attribution
