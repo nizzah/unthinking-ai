@@ -119,18 +119,18 @@ export default function Intro() {
               {[
                 {
                   n: "1",
-                  title: "Dump your notes",
+                  title: "Upload your notes",
                   body: "Upload photos, voice memos, or connect Notion — everything scattered, in one place.",
                 },
                 {
                   n: "2",
-                  title: "Spark finds patterns",
-                  body: "Your ideas form a constellation — themes, connections, and insights you hadn't seen.",
+                  title: "Spark finds hidden patterns",
+                  body: "Your ideas form a constellation — themes, connections, and insights you might not have seen.",
                 },
                 {
                   n: "3",
-                  title: "Take your first step",
-                  body: "A courage ladder of three small actions, made just for where you are right now.",
+                  title: "Take one small step forward",
+                  body: "Tiny actions, designed to help you move forward, wherever you are.",
                 },
               ].map(({ n, title, body }) => (
                 <div key={n} className="flex gap-5 items-start">
