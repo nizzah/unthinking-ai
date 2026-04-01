@@ -1,5 +1,5 @@
 import type React from "react"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Geist, Geist_Mono, Manrope, Spectral } from "next/font/google"
 import "./globals.css"
 import { ErrorSuppression } from "@/components/error-suppression"
 
@@ -13,10 +13,23 @@ const geistMono = Geist_Mono({
   variable: "--font-mono",
 })
 
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-heading",
+})
+
+const spectral = Spectral({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-body",
+})
+
 export const metadata = {
-  title: "Unthinking",
-  description: "Trust yourself again. One spark of clarity, one small step of courage, one moment of meaning.",
-    generator: 'v0.app'
+  title: "Spark",
+  description: "Your thinking is already in there. Let's find it.",
+  generator: "v0.app",
 }
 
 export default function RootLayout({
@@ -25,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${spectral.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{

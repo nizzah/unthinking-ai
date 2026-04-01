@@ -103,12 +103,10 @@ p {
 
 /* Starry Night Background */
 .starry-night {
-  background: linear-gradient(180deg, 
-    #0a0f1a 0%, 
-    #1a2332 25%, 
-    #2d3748 50%, 
-    #4a5568 75%, 
-    #718096 100%
+  background: linear-gradient(180deg,
+    #052135 0%,
+    #052135 60%,
+    #0a2d45 100%
   );
   position: relative;
   overflow: hidden;
@@ -244,7 +242,7 @@ p {
   background: #47CF9C;
   border-radius: 0 0 0 0;
   clip-path: ellipse(100% 100% at 50% 100%);
-  z-index: 0;
+  z-index: 2;
 }
 
 .painted-hills::before {

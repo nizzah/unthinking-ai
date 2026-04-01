@@ -36,8 +36,10 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Geist', 'system-ui', 'sans-serif'],
-        mono: ['Geist Mono', 'monospace'],
+        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'monospace'],
+        heading: ['var(--font-heading)', 'Manrope', 'sans-serif'],
+        body: ['var(--font-body)', 'Spectral', 'Georgia', 'serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
